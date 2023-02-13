@@ -11,8 +11,8 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/kokdot/go-musthave-devops/internal/repo"
-	"github.com/kokdot/go-musthave-devops/internal/store"
+	"github.com/kokdot/go-musthave-diploma/internal/repo"
+	"github.com/kokdot/go-musthave-diploma/internal/store"
 	"github.com/kokdot/go-musthave-diploma/internal/auth"
 	"github.com/kokdot/go-musthave-diploma/internal/toking"
 	"github.com/rs/zerolog"
