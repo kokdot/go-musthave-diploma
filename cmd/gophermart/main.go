@@ -12,7 +12,6 @@ import (
 
 	"github.com/kokdot/go-musthave-diploma/internal/handler"
 	"github.com/kokdot/go-musthave-diploma/internal/interfaceinit"
-	"github.com/kokdot/go-musthave-diploma/internal/metricsserver"
 	"github.com/kokdot/go-musthave-diploma/internal/onboardingserver"
 	"github.com/kokdot/go-musthave-diploma/internal/store"
 )

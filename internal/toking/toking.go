@@ -1,4 +1,4 @@
-package tocking
+package toking
 
 import (
 	"fmt"
