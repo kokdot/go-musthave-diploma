@@ -50,52 +50,52 @@ func main() {
     r.Use(middleware.Recoverer)
     // r.Use(middleware.Compress(5, "gzip"))
     r.Use(middleware.Compress(5))
-    r.Get("/", handler.GetAll)
-    r.Get("/ping", handler.GetPing)
+    // r.Get("/", handler.GetAll)
+    // r.Get("/ping", handler.GetPing)
 
-    r.Post("/updates/", handler.PostUpdateByBatch)
+    r.Post("/api/user/register", handler.PostRegister)
     // r.Post("/updates1/", handler.PostUpdateByBatch1)
     
-    r.Route("/update", func(r chi.Router) {
-        r.Post("/", handler.PostUpdate)
-        r.Route("/counter", func(r chi.Router) {
-            r.Route("/{nameData}/{valueData}", func(r chi.Router) {
-                r.Use(handler.PostCounterCtx)
-                r.Post("/", handler.PostUpdateCounter)
-            })
-        })
-        r.Route("/gauge", func(r chi.Router) {
-            r.Route("/{nameData}/{valueData}", func(r chi.Router) {
-                r.Use(handler.PostGaugeCtx)
-                r.Post("/", handler.PostUpdateGauge)
-            })
-        })
-        r.Route("/",func(r chi.Router) {
-            r.Post("/*", func(w http.ResponseWriter, r *http.Request) {
-		        w.Header().Set("content-type", "text/plain; charset=utf-8")
-                w.WriteHeader(http.StatusNotImplemented)
-                // fmt.Fprint(w, "line: 52; http.StatusNotImplemented")
-	        })
-        })
-    })
+    // r.Route("/update", func(r chi.Router) {
+    //     r.Post("/", handler.PostUpdate)
+    //     r.Route("/counter", func(r chi.Router) {
+    //         r.Route("/{nameData}/{valueData}", func(r chi.Router) {
+    //             r.Use(handler.PostCounterCtx)
+    //             r.Post("/", handler.PostUpdateCounter)
+    //         })
+    //     })
+    //     r.Route("/gauge", func(r chi.Router) {
+    //         r.Route("/{nameData}/{valueData}", func(r chi.Router) {
+    //             r.Use(handler.PostGaugeCtx)
+    //             r.Post("/", handler.PostUpdateGauge)
+    //         })
+    //     })
+    //     r.Route("/",func(r chi.Router) {
+    //         r.Post("/*", func(w http.ResponseWriter, r *http.Request) {
+	// 	        w.Header().Set("content-type", "text/plain; charset=utf-8")
+    //             w.WriteHeader(http.StatusNotImplemented)
+    //             // fmt.Fprint(w, "line: 52; http.StatusNotImplemented")
+	//         })
+    //     })
+    // })
 
-    r.Route("/value", func(r chi.Router) {
-        r.Post("/", handler.GetValue)
-		r.Route("/counter", func(r chi.Router){
-            r.Route("/{nameData}", func(r chi.Router) {
-                r.Use(handler.GetCtx)
-                r.Get("/", handler.GetCounter)
-            })
-        })
-       	r.Route("/gauge", func(r chi.Router){
-            r.Route("/{nameData}", func(r chi.Router) {
-                r.Use(handler.GetCtx)
-                r.Get("/", handler.GetGauge)
-            })
-        })
-	})
+    // r.Route("/value", func(r chi.Router) {
+    //     r.Post("/", handler.GetValue)
+	// 	r.Route("/counter", func(r chi.Router){
+    //         r.Route("/{nameData}", func(r chi.Router) {
+    //             r.Use(handler.GetCtx)
+    //             r.Get("/", handler.GetCounter)
+    //         })
+    //     })
+    //    	r.Route("/gauge", func(r chi.Router){
+    //         r.Route("/{nameData}", func(r chi.Router) {
+    //             r.Use(handler.GetCtx)
+    //             r.Get("/", handler.GetGauge)
+    //         })
+    //     })
+	// })
 
-    err = http.ListenAndServe(url, r)
+    err = http.ListenAndServe(address, r)
     logg.Fatal().Err(err).Send()
     // log.Fatal(http.ListenAndServe(":8080", r))
 }
