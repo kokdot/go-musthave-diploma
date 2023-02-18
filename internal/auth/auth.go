@@ -38,7 +38,7 @@ func SetCookie(value []byte, name string, seckretKey []byte) *http.Cookie {
 	valueStr := base64.URLEncoding.EncodeToString(value1)
 	fmt.Printf("len of string valueStr: %v\n", len(valueStr))
 	cookie := http.Cookie{
-		Name: name,
+		Name: Name,
 		Value: valueStr,
 		Path: "/",
 		MaxAge: 300,
