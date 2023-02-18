@@ -1,4 +1,4 @@
-package main
+      package main
 
 import (
 	// "log"
@@ -32,14 +32,10 @@ func main() {
     handler.PutM(m)
     handler.GetLogg(logg)
     store.GetLogg(logg)
-    metricsserver.GetLogg(logg)
+    // metricsserver.GetLogg(logg)0
     logg.Printf("interface m:   %#v", m)
     logg.Print("--------------------main--started-----------------------------------------")
     
-    // if m.GetDataBaseDSN() != "" {
-    //     downloading_to_file.DownloadingToFile(m)
-    // }
-
     // определяем роутер chi
     r := chi.NewRouter()
     // зададим встроенные middleware, чтобы улучшить стабильность приложения
@@ -52,7 +48,37 @@ func main() {
     // r.Get("/", handler.GetAll)
     // r.Get("/ping", handler.GetPing)
 
-    r.Post("/api/user/register", handler.PostRegister)
+    r.Get("/", handler.GetOk)
+    r.Post("/api/user/register", handler.Registration)
+    r.Post("/api/user/test", handler.CheckUserLogin)
+    r.Post("/api/user/login", handler.Authentication)
+    r.Post("/api/user/orders", handler.DownloadOrderNumber)
+    err = http.ListenAndServe(address, r)
+    logg.Fatal().Err(err).Send()
+    // log.Fatal(http.ListenAndServe(":8080", r))
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     // r.Post("/updates1/", handler.PostUpdateByBatch1)
     
     // r.Route("/update", func(r chi.Router) {
@@ -94,8 +120,5 @@ func main() {
     //     })
 	// })
 
-    err = http.ListenAndServe(address, r)
-    logg.Fatal().Err(err).Send()
-    // log.Fatal(http.ListenAndServe(":8080", r))
-}
+
 
