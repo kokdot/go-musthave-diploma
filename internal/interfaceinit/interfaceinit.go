@@ -2,7 +2,7 @@ package interfaceinit
 
 import (
 	"fmt"
-	"time"
+	// "time"
 	"errors"
 	"github.com/rs/zerolog"
 

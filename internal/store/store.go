@@ -2,30 +2,114 @@ package store
 
 import (
 	"context"
-	// "crypto/rand"
-	// "crypto/sha256"
-	// "encoding/hex"
 	"errors"
 	"fmt"
 	"time"
 
 	"database/sql"
 
+	"github.com/rs/zerolog"
+
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/kokdot/go-musthave-diploma/internal/auth"
-	"github.com/kokdot/go-musthave-diploma/internal/toking"
+	// "github.com/kokdot/go-musthave-diploma/internal/auth"
 	"github.com/kokdot/go-musthave-diploma/internal/repo"
+	"github.com/kokdot/go-musthave-diploma/internal/toking"
 )
-var UserIsPresent = errors.New("user is present")
-var PasswordIsEmpty = errors.New("password is empty")
+var ErrUserIsPresent error = errors.New("user is present")
+var ErrUserNotPresent error = errors.New("user not present")
+var ErrPasswordIsEmpty = errors.New("password is empty")
+var ErrPasswordAndLoginMismatch = errors.New("password and login mismatch")
+var logg zerolog.Logger
 type DBStorage struct {
 	// StoreMap      *StoreMap
-	accrualSystemAddress    string
+	accrualSysemAddress    string
 	address       string
 	dataBaseURI   string
 	secretKey []byte
 	dbconn        *sql.DB
 }
+func GetLogg(loggReal zerolog.Logger)  {
+	logg = loggReal
+}
+
+func (d DBStorage) GetSeckretKey() []byte {
+	return d.secretKey
+}
+func (d DBStorage) ObtainNewOrder(userId, number int) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+    query := `INSERT INTO Orders
+    (
+        UserId, 
+        Order
+    ) values($1, $2)
+    `
+    _, err := d.dbconn.ExecContext(ctx, query, userId, number)
+    if err != nil {
+
+		logg.Printf("не удалось выполнить запрос создания заказа: %v", err)
+		return err
+	}
+	return nil
+}
+
+func (d DBStorage) CheckExistOrderNumber(number int) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	
+    query := `
+	select exists(select 1 from Orders where Order=$1);
+	`
+    row := d.dbconn.QueryRowContext(ctx, query, number)
+	var ok bool
+	_ = row.Scan(&ok)
+   
+    return ok
+}
+func (d DBStorage) GetIdOrderOwner(number int) int {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	
+    query := `
+	select UserId from Orders where Order=$1;
+	`
+    row := d.dbconn.QueryRowContext(ctx, query, number)
+	var userId int
+	_ = row.Scan(&userId)
+   
+    return userId
+}
+func GetUserNameById(userId int) string {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	
+    query := `
+	select Name from Users where Id=$1;
+	`
+    row := d.dbconn.QueryRowContext(ctx, query, userId)
+	var name string
+	_ = row.Scan(&name)
+   
+    return name
+}
+func (d DBStorage) UserGet(name string) (*repo.User, error) {
+	ok := d.UserIsPresent(name)
+	if !ok {
+		return nil, ErrUserNotPresent
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	
+    query := `
+	select Name, Password from Users where Name=$1;
+	`
+    row := d.dbconn.QueryRowContext(ctx, query, name)
+	var u repo.User
+	_ = row.Scan(&u.Name, &u.Password)
+   
+    return &u, nil
+}
+
 func (d DBStorage) UserIsPresent(name string) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -40,14 +124,39 @@ func (d DBStorage) UserIsPresent(name string) bool {
    
     return ok
 }
-func (d DBStorage) UserRegistrate(u repo.User) error {
-	if d.UserIsPresent(u.Name) {
-		return UserIsPresent
+func (d DBStorage) UserAuthenticate(u repo.User) (bool, error) {
+	logg.Print("--------------------UserAuthenticate------------1-------------start-------------------------------")
+	u1ptr, err := d.UserGet(u.Name)
+	if err != nil {
+		logg.Error().Err(err).Send()
+		return false, ErrUserNotPresent
 	}
 	if u.Password == "" {
-		return PasswordIsEmpty
+		logg.Error().Err(ErrPasswordIsEmpty).Send()
+		return false, ErrPasswordIsEmpty
 	}
 	u.Password = toking.Sha256([]byte(u.Password))
+	logg.Print("after hash u.Password: ", u.Password)
+	ok := u.Password == u1ptr.Password
+	if !ok {
+		logg.Error().Err(ErrPasswordAndLoginMismatch).Send()
+		return false, ErrPasswordAndLoginMismatch
+	} else {
+		logg.Print("Аутентификация прошла успешно.")
+		return true, nil
+	}
+}
+func (d DBStorage) UserRegistrate(u repo.User) error {
+	logg.Print("--------------------UserRegistrate------------1-------------start-------------------------------")
+	ok := d.UserIsPresent(u.Name)
+	if  ok {
+		return ErrUserIsPresent
+	}
+	if u.Password == "" {
+		return ErrPasswordIsEmpty
+	}
+	u.Password = toking.Sha256([]byte(u.Password))
+	logg.Print("after hash u.Password: ", u.Password)
 	err := d.UserCreate(u)
 	if err != nil {
 		return err
@@ -60,12 +169,14 @@ func (d DBStorage) UserCreate(u repo.User) error {
     query := `INSERT INTO Users
     (
         Name, 
-        Password, 
-    ) values($1, $2);
+        Password 
+    ) values($1, $2)
     `
     _, err := d.dbconn.ExecContext(ctx, query, u.Name, u.Password)
     if err != nil {
-		return fmt.Errorf("не удалось выполнить запрос создания пользователя: %v", err)
+
+		logg.Printf("не удалось выполнить запрос создания пользователя: %v", err)
+		return err
 	}
 	return nil
 }
@@ -84,13 +195,16 @@ func NewDBStorage(address, accrualSysemAddress, dataBaseURI string) (*DBStorage,
 	if err = dbconn.PingContext(ctx); err != nil {
 		return nil, err
 	}
-    secretKey := toking.RandBytesKeyString(32)
+    secretKey, err := toking.RandBytesKeyString(32)
+	if err != nil {
+		return nil, err
+	}
     var dbStorage =   DBStorage{
         // StoreMap: &sm,
 		address: address,
 		accrualSysemAddress: accrualSysemAddress,
 		dataBaseURI: dataBaseURI,
-		secretKey: []byte{},
+		secretKey: secretKey,
         dbconn: dbconn,
     }
     if err = dbStorage.createTableUsers(); err != nil {
@@ -105,12 +219,20 @@ func (d DBStorage) createTableUsers() error {
 	defer cancel()
 	
     query := `
-		CREATE TABLE  IF NOT EXISTS  Users
+		DROP TABLE IF EXISTS Users;
+		CREATE TABLE Users
         (
 			Id SERIAL PRIMARY KEY,
             Name VARCHAR(255) NOT NULL UNIQUE,
             Password VARCHAR(255)
         );
+		CREATE TABLE Orders
+		(
+			Id SERIAL PRIMARY KEY,
+			UserId INTEGER,
+			Order INTEGER,
+			FOREIGN KEY (UserId) REFERENCES Users (Id) ON DELETE CASCADE
+		);
 	`
     _, err := d.dbconn.ExecContext(ctx, query)
     if err != nil {

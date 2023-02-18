@@ -28,3 +28,4 @@ func Toking() string{
     	}
 	return Sha256(x)
 }	
+ 

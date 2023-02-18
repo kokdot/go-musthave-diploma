@@ -1,7 +1,7 @@
 package onboardingserver
 
 import (
-    "time"
+    // "time"
 	"strconv"
 	"os"
 	"flag"
@@ -12,7 +12,7 @@ import (
 const (
     Address = "127.0.0.1:8080"
     AccrualSysemAddress = ""
-    DataBaseURI = ""
+    DataBaseURI = "postgres://postgres:postgrespw@localhost:49153"
     Debug = false
 )
 
