@@ -157,7 +157,7 @@ func Authentication(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} 
-	cookie := auth.SetCookie(toking.Toking(), m.GetSeckretKey())
+	cookie := auth.SetCookie(toking.Toking(), u.Name, m.GetSeckretKey())
 	logg.Print("cookie: ", cookie)
 	http.SetCookie(w, cookie)
 	w.Header().Set("content-type", "application/json")
@@ -195,7 +195,7 @@ func Registration(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	
-	cookie := auth.SetCookie(toking.Toking(), m.GetSeckretKey())
+	cookie := auth.SetCookie(toking.Toking(), u.Name, m.GetSeckretKey())
 	logg.Print("cookie: ", cookie)
 
 	http.SetCookie(w, cookie)

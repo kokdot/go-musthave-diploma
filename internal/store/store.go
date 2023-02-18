@@ -79,7 +79,7 @@ func (d DBStorage) GetIdOrderOwner(number int) int {
    
     return userId
 }
-func GetUserNameById(userId int) string {
+func (d DBStorage) GetUserNameById(userId int) string {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	

@@ -21,11 +21,11 @@ func Sha256 (b []byte) string {
     result := fmt.Sprintf("%x", dst)
 	return result
 } 
-func Toking() string{
+func Toking() []byte{
 	x, err := RandBytesKeyString(16)
 		if err != nil {
         fmt.Println(err)
     	}
-	return Sha256(x)
+	return x
 }	
  
