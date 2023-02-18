@@ -10,12 +10,13 @@ import (
 	"github.com/kokdot/go-musthave-diploma/internal/store"
 )
 
-var m  repo.Repo
+// var m  repo.Repo
 
 func InterfaceInit(address string, accrualSysemAddress string, dataBaseURI string, logg zerolog.Logger) (repo.Repo, error) {
 	if dataBaseURI == "" {
 		return nil, errors.New("dataBaseURI is empty, failed to create DBStorage")
 	}
+	logg.Print("-------before--------NewDBStorage---------------------------------")
 	d, err := store.NewDBStorage(address , accrualSysemAddress, dataBaseURI)
 	logg.Print("----------d, err := -------", d, "------", err)
 	

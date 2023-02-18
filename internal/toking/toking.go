@@ -5,6 +5,9 @@ import (
 	"crypto/sha256"
 	"crypto/rand"
 )
+const (
+	sizeOfKeyString = 32
+)
 func RandBytesKeyString(n int) ([]byte, error) {
     b := make([]byte, n)
     _, err := rand.Read(b)
@@ -22,7 +25,7 @@ func Sha256 (b []byte) string {
 	return result
 } 
 func Toking() []byte{
-	x, err := RandBytesKeyString(16)
+	x, err := RandBytesKeyString(sizeOfKeyString)
 		if err != nil {
         fmt.Println(err)
     	}

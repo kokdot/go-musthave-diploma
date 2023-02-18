@@ -41,7 +41,7 @@ func (d DBStorage) ObtainNewOrder(userId, number int) error {
     query := `INSERT INTO Orders
     (
         UserId, 
-        Order
+        Number
     ) values($1, $2)
     `
     _, err := d.dbconn.ExecContext(ctx, query, userId, number)
@@ -58,7 +58,7 @@ func (d DBStorage) CheckExistOrderNumber(number int) bool {
 	defer cancel()
 	
     query := `
-	select exists(select 1 from Orders where Order=$1);
+	select exists(select 1 from Orders where Number=$1);
 	`
     row := d.dbconn.QueryRowContext(ctx, query, number)
 	var ok bool
@@ -71,7 +71,7 @@ func (d DBStorage) GetIdOrderOwner(number int) int {
 	defer cancel()
 	
     query := `
-	select UserId from Orders where Order=$1;
+	select UserId from Orders where Number=$1;
 	`
     row := d.dbconn.QueryRowContext(ctx, query, number)
 	var userId int
@@ -186,17 +186,21 @@ func (d DBStorage) GetSecretKey() []byte {
 }
 
 func NewDBStorage(address, accrualSysemAddress, dataBaseURI string) (*DBStorage, error){
+	logg.Print("-------------------------NewDBStorage-----------------1---")
     dbconn, err := sql.Open("pgx", dataBaseURI)
 	if err != nil {
+		logg.Print("-------------------------NewDBStorage-----------------2---")
 		return nil, err
 	}
     ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 	if err = dbconn.PingContext(ctx); err != nil {
+		logg.Print("-------------------------NewDBStorage-----------------3---")
 		return nil, err
 	}
     secretKey, err := toking.RandBytesKeyString(32)
 	if err != nil {
+		logg.Print("-------------------------NewDBStorage-----------------4---")
 		return nil, err
 	}
     var dbStorage =   DBStorage{
@@ -207,18 +211,20 @@ func NewDBStorage(address, accrualSysemAddress, dataBaseURI string) (*DBStorage,
 		secretKey: secretKey,
         dbconn: dbconn,
     }
-    if err = dbStorage.createTableUsers(); err != nil {
+    if err = dbStorage.CreateTableUsers(); err != nil {
+		logg.Print("-------------------------NewDBStorage-----------------5---")
         return nil, err
     }
 
     return &dbStorage , nil
 }
 
-func (d DBStorage) createTableUsers() error {
+func (d DBStorage) CreateTableUsers() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	
     query := `
+		DROP TABLE IF EXISTS Orders;
 		DROP TABLE IF EXISTS Users;
 		CREATE TABLE Users
         (
@@ -230,7 +236,7 @@ func (d DBStorage) createTableUsers() error {
 		(
 			Id SERIAL PRIMARY KEY,
 			UserId INTEGER,
-			Order INTEGER,
+			Number INTEGER,
 			FOREIGN KEY (UserId) REFERENCES Users (Id) ON DELETE CASCADE
 		);
 	`
