@@ -70,14 +70,17 @@ var OrderNumbertests = []struct {
 	name string
 	number string
 	StatusCode int
+	contentType string
 }{
 	{
 		name: "correct order",
 		StatusCode: 202,
+		contentType: "application/json",
 	},
 	{
 		name: "reapit order",
 		StatusCode: 200,
+		contentType: "application/json",
 	},
 	// {
 	// 	name: "another user order",
@@ -119,15 +122,12 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	_, err = io.Copy(io.Discard, resp.Body)
-	if err != nil {
-		fmt.Println(err)
-	}
-	resp.Body.Close()
+	
 	_, err = io.Copy(io.Discard, resp.Body)
 	if err != nil {
 		fmt.Println(err)
 	} 
+	resp.Body.Close()
 	// -------------------------------------------Vasya-------------------------------------------------------------------
 
 	for _, tt := range OrderNumbertests {
@@ -148,9 +148,10 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 			if err != nil {
 				fmt.Println(err)
 			}
-			resp2.Body.Close()
 			assert.NoError(t, err)
-			assert.Equal(t, tt.StatusCode, resp.StatusCode)
+			assert.Equal(t, tt.StatusCode, resp2.StatusCode)
+			assert.Equal(t, tt.contentType, resp2.Header.Get("Content-Type"))
+			resp2.Body.Close()
 		})
 	}
 	// -------------------------------------------Misha-------------------------------------------------------------------
@@ -179,10 +180,6 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 		fmt.Println(err)
 	}
 	resp1.Body.Close()
-	_, err = io.Copy(io.Discard, resp1.Body)
-	if err != nil {
-		fmt.Println(err)
-	} 
 	
 	for _, tt := range OrderNumbertests {
 		t.Run(tt.name + "_Misha", func(t *testing.T) {
@@ -202,9 +199,10 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 			if err != nil {
 				fmt.Println(err)
 			}
-			resp3.Body.Close()
 			assert.NoError(t, err)
-			assert.Equal(t, tt.StatusCode, resp.StatusCode)
+			assert.Equal(t, tt.StatusCode, resp3.StatusCode)
+			assert.Equal(t, tt.contentType, resp3.Header.Get("Content-Type"))
+			resp3.Body.Close()
 		})
 	}
 	t.Run("incorrect order", func(t *testing.T) {
@@ -224,9 +222,10 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 		if err != nil {
 			fmt.Println(err)
 		}
-		resp4.Body.Close()
 		assert.NoError(t, err)
-		assert.Equal(t, 422, resp.StatusCode)
+		assert.Equal(t, 422, resp4.StatusCode)
+		assert.Equal(t, "application/json", resp4.Header.Get("Content-Type"))
+		resp4.Body.Close()
 	})
 	t.Run("order of enuther user", func(t *testing.T) {
 		bodyBytes := []byte(sNumber)
@@ -245,9 +244,10 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 		if err != nil {
 			fmt.Println(err)
 		}
-		resp5.Body.Close()
 		assert.NoError(t, err)
-		assert.Equal(t, 409, resp.StatusCode)
+		assert.Equal(t, 409, resp5.StatusCode)
+		assert.Equal(t, "application/json", resp5.Header.Get("Content-Type"))
+		resp5.Body.Close()
 	})
 }
 
