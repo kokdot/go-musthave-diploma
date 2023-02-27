@@ -129,7 +129,7 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 	} 
 	resp.Body.Close()
 	// -------------------------------------------Vasya-------------------------------------------------------------------
-
+	
 	for _, tt := range OrderNumbertests {
 		t.Run(tt.name + "_Vasya", func(t *testing.T) {
 			bodyBytes := []byte(sNumber)
@@ -153,6 +153,30 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 			assert.Equal(t, tt.contentType, resp2.Header.Get("Content-Type"))
 			resp2.Body.Close()
 		})
+	}
+	for i := 0; i < 30; i++ {
+		number = luna.GetOrderNumber()
+		sNumber = strconv.Itoa(number)
+		bodyBytes := []byte(sNumber)
+		bodyReader := bytes.NewReader(bodyBytes)
+		req, err = http.NewRequest(http.MethodPost, serverAddress + "/api/user/orders", bodyReader)
+		if err != nil {
+			fmt.Println(err)
+		}
+		req.Header.Set("Content-Type", "text/plain; charset=UTF-8")
+		req.Header.Add("Accept", "application/json")
+		resp2, err := client.Do(req)
+		if err != nil {
+			fmt.Println(err)
+		}
+		_, err = io.Copy(io.Discard, resp2.Body)
+		if err != nil {
+			fmt.Println(err)
+		}
+		assert.NoError(t, err)
+		assert.Equal(t, 202, resp2.StatusCode)
+		assert.Equal(t, "application/json", resp2.Header.Get("Content-Type"))
+		resp2.Body.Close()
 	}
 	// -------------------------------------------Misha-------------------------------------------------------------------
 	var number1 = luna.GetOrderNumber()
