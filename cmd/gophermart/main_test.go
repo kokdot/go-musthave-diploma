@@ -140,6 +140,7 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 			if err != nil {
 				fmt.Println(err)
 			}
+			resp.Body.Close()
 			assert.NoError(t, err)
 			assert.Equal(t, tt.StatusCode, resp.StatusCode)
 		})
@@ -169,7 +170,7 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 	
 	// fmt.Printf("resp Cookies: %#v\n", resp.Cookies())
 	// fmt.Println("client.Jar: ", client.Jar)
-	defer resp1.Body.Close()
+	resp1.Body.Close()
 	_, err = io.Copy(io.Discard, resp1.Body)
 	if err != nil {
 		fmt.Println(err)
@@ -206,6 +207,7 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 		if err != nil {
 			fmt.Println(err)
 		}
+		resp.Body.Close()
 		assert.NoError(t, err)
 		assert.Equal(t, 422, resp.StatusCode)
 	})
@@ -222,6 +224,7 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 		if err != nil {
 			fmt.Println(err)
 		}
+		resp.Body.Close()
 		assert.NoError(t, err)
 		assert.Equal(t, 409, resp.StatusCode)
 	})
