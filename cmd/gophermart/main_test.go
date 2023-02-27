@@ -119,7 +119,11 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	defer resp.Body.Close()
+	_, err = io.Copy(io.Discard, resp.Body)
+	if err != nil {
+		fmt.Println(err)
+	}
+	resp.Body.Close()
 	_, err = io.Copy(io.Discard, resp.Body)
 	if err != nil {
 		fmt.Println(err)
@@ -137,6 +141,10 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 			req.Header.Set("Content-Type", "text/plain; charset=UTF-8")
 			req.Header.Add("Accept", "application/json")
 			resp, err = client.Do(req)
+			if err != nil {
+				fmt.Println(err)
+			}
+			_, err = io.Copy(io.Discard, resp.Body)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -170,7 +178,11 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 	
 	// fmt.Printf("resp Cookies: %#v\n", resp.Cookies())
 	// fmt.Println("client.Jar: ", client.Jar)
-	resp1.Body.Close()
+	_, err = io.Copy(io.Discard, resp.Body)
+	if err != nil {
+		fmt.Println(err)
+	}
+	resp.Body.Close()
 	_, err = io.Copy(io.Discard, resp1.Body)
 	if err != nil {
 		fmt.Println(err)
@@ -190,6 +202,11 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 			if err != nil {
 				fmt.Println(err)
 			}
+			_, err = io.Copy(io.Discard, resp.Body)
+			if err != nil {
+				fmt.Println(err)
+			}
+			resp.Body.Close()
 			assert.NoError(t, err)
 			assert.Equal(t, tt.StatusCode, resp.StatusCode)
 		})
@@ -207,6 +224,10 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 		if err != nil {
 			fmt.Println(err)
 		}
+		_, err = io.Copy(io.Discard, resp.Body)
+		if err != nil {
+			fmt.Println(err)
+		}
 		resp.Body.Close()
 		assert.NoError(t, err)
 		assert.Equal(t, 422, resp.StatusCode)
@@ -221,6 +242,10 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 		req.Header.Set("Content-Type", "text/plain; charset=UTF-8")
 		req.Header.Add("Accept", "application/json")
 		resp, err = client.Do(req)
+		if err != nil {
+			fmt.Println(err)
+		}
+		_, err = io.Copy(io.Discard, resp.Body)
 		if err != nil {
 			fmt.Println(err)
 		}
