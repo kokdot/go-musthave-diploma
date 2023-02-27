@@ -20,9 +20,9 @@ type Repo interface {
 	UserGet(name string) (*User, error)
 	CheckExistOrderNumber(naumber int) bool
 	GetIDOrderOwner(naumber int) int
-	GetUserNameByID(userId int) string
+	GetUserNameByID(userID int) string
 	GetUserIDByName(name string) int
-	ObtainNewOrder(userId, number int) error
+	ObtainNewOrder(userID, number int) error
 	// GetOk()
 
 }
