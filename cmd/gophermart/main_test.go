@@ -140,15 +140,15 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 			}
 			req.Header.Set("Content-Type", "text/plain; charset=UTF-8")
 			req.Header.Add("Accept", "application/json")
-			resp, err = client.Do(req)
+			resp2, err := client.Do(req)
 			if err != nil {
 				fmt.Println(err)
 			}
-			_, err = io.Copy(io.Discard, resp.Body)
+			_, err = io.Copy(io.Discard, resp2.Body)
 			if err != nil {
 				fmt.Println(err)
 			}
-			resp.Body.Close()
+			resp2.Body.Close()
 			assert.NoError(t, err)
 			assert.Equal(t, tt.StatusCode, resp.StatusCode)
 		})
@@ -194,15 +194,15 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 			}
 			req.Header.Set("Content-Type", "text/plain; charset=UTF-8")
 			req.Header.Add("Accept", "application/json")
-			resp, err = client.Do(req)
+			resp3, err := client.Do(req)
 			if err != nil {
 				fmt.Println(err)
 			}
-			_, err = io.Copy(io.Discard, resp.Body)
+			_, err = io.Copy(io.Discard, resp3.Body)
 			if err != nil {
 				fmt.Println(err)
 			}
-			resp.Body.Close()
+			resp3.Body.Close()
 			assert.NoError(t, err)
 			assert.Equal(t, tt.StatusCode, resp.StatusCode)
 		})
@@ -216,15 +216,15 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 		}
 		req.Header.Set("Content-Type", "text/plain; charset=UTF-8")
 		req.Header.Add("Accept", "application/json")
-		resp, err = client.Do(req)
+		resp4, err := client.Do(req)
 		if err != nil {
 			fmt.Println(err)
 		}
-		_, err = io.Copy(io.Discard, resp.Body)
+		_, err = io.Copy(io.Discard, resp4.Body)
 		if err != nil {
 			fmt.Println(err)
 		}
-		resp.Body.Close()
+		resp4.Body.Close()
 		assert.NoError(t, err)
 		assert.Equal(t, 422, resp.StatusCode)
 	})
@@ -237,15 +237,15 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 		}
 		req.Header.Set("Content-Type", "text/plain; charset=UTF-8")
 		req.Header.Add("Accept", "application/json")
-		resp, err = client.Do(req)
+		resp5, err := client.Do(req)
 		if err != nil {
 			fmt.Println(err)
 		}
-		_, err = io.Copy(io.Discard, resp.Body)
+		_, err = io.Copy(io.Discard, resp5.Body)
 		if err != nil {
 			fmt.Println(err)
 		}
-		resp.Body.Close()
+		resp5.Body.Close()
 		assert.NoError(t, err)
 		assert.Equal(t, 409, resp.StatusCode)
 	})
