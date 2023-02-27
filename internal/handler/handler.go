@@ -51,12 +51,14 @@ func DownloadOrderNumber(w http.ResponseWriter, r *http.Request) {
 	name, ok, err := CheckCookieAutentication(r)
 	if !ok {
 		logg.Error().Err(err).Send()
+		w.Header().Set("content-type", "application/json")
 		http.Error(w, "логин или пароль не совпадают. login failed", http.StatusUnauthorized)
 	}
 	logg.Print("Получен запрос для пользователя: ", name, "Проверка cookie прошла успешно.")
 	ok = m.UserIsPresent(name)
 	if !ok {
 		logg.Error().Err(err).Send()	
+		w.Header().Set("content-type", "application/json")
 		http.Error(w, "такого пользователя. не существует вам необходимо пройти регистрацию или аутентификацию. login failed", http.StatusUnauthorized)
 	}
 	logg.Print("Данный пользователь присутствует в системе.")
