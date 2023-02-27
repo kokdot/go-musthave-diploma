@@ -85,31 +85,31 @@ func DownloadOrderNumber(w http.ResponseWriter, r *http.Request) {
 	logg.Print("Проверка luna прошла успешно.")
 	ok = m.CheckExistOrderNumber(number)
 	logg.Print("Провека сущеустаования данного номера заказа: ", ok)
-	var userId int
+	var userID int
 	if ok {
 		logg.Print("Данный заказ уже сущетвует.")
-		userId = m.GetIdOrderOwner(number)
+		userID = m.GetIDOrderOwner(number)
 		
-		logg.Print("Id ползователя, чей это заказ: ", userId)
-		userName := m.GetUserNameById(userId)
+		logg.Print("Id ползователя, чей это заказ: ", userID)
+		userName := m.GetUserNameByID(userID)
 		if userName == name {
-			logg.Print("заказ принадлежит пользователю с Id: ", userId)
+			logg.Print("заказ принадлежит пользователю с Id: ", userID)
 			logg.Error().Err(ErrOrderUsedUser).Send()	
 			w.Header().Set("content-type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			return
 		} else {
-			logg.Print("заказ не принадлежит пользователю с Id: ", userId)
+			logg.Print("заказ не принадлежит пользователю с Id: ", userID)
 			logg.Error().Err(ErrOrderUsedUnotherUser).Send()	
 			w.Header().Set("content-type", "application/json")
 			w.WriteHeader(http.StatusConflict)
 			return
 		}
 	} else {
-		userId = m.GetUserIdByName(name)
+		userID = m.GetUserIDByName(name)
 	}
-	logg.Print("создаем заказ для пользователя с Id: ", userId, "; и номером заказа :  ", number)
-	err = m.ObtainNewOrder(userId, number)
+	logg.Print("создаем заказ для пользователя с Id: ", userID, "; и номером заказа :  ", number)
+	err = m.ObtainNewOrder(userID, number)
 	if err != nil {
 		logg.Error().Err(err).Send()	
 		w.Header().Set("content-type", "application/json")

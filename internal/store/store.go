@@ -35,7 +35,7 @@ func GetLogg(loggReal zerolog.Logger)  {
 func (d DBStorage) GetSeckretKey() []byte {
 	return d.secretKey
 }
-func (d DBStorage) ObtainNewOrder(userId, number int) error {
+func (d DBStorage) ObtainNewOrder(userID, number int) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
     query := `INSERT INTO Orders
@@ -44,7 +44,7 @@ func (d DBStorage) ObtainNewOrder(userId, number int) error {
         Number
     ) values($1, $2)
     `
-    _, err := d.dbconn.ExecContext(ctx, query, userId, number)
+    _, err := d.dbconn.ExecContext(ctx, query, userID, number)
     if err != nil {
 
 		logg.Printf("не удалось выполнить запрос создания заказа: %v", err)
@@ -66,7 +66,7 @@ func (d DBStorage) CheckExistOrderNumber(number int) bool {
    
     return ok
 }
-func (d DBStorage) GetIdOrderOwner(number int) int {
+func (d DBStorage) GetIDOrderOwner(number int) int {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	
@@ -74,25 +74,25 @@ func (d DBStorage) GetIdOrderOwner(number int) int {
 	select UserId from Orders where Number=$1;
 	`
     row := d.dbconn.QueryRowContext(ctx, query, number)
-	var userId int
-	_ = row.Scan(&userId)
+	var userID int
+	_ = row.Scan(&userID)
    
-    return userId
+    return userID
 }
-func (d DBStorage) GetUserNameById(userId int) string {
+func (d DBStorage) GetUserNameByID(userID int) string {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	
     query := `
 	select Name from Users where Id=$1;
 	`
-    row := d.dbconn.QueryRowContext(ctx, query, userId)
+    row := d.dbconn.QueryRowContext(ctx, query, userID)
 	var name string
 	_ = row.Scan(&name)
    
     return name
 }
-func (d DBStorage) GetUserIdByName(name string) int {
+func (d DBStorage) GetUserIDByName(name string) int {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	
@@ -100,10 +100,10 @@ func (d DBStorage) GetUserIdByName(name string) int {
 	select Id from Users where Name=$1;
 	`
     row := d.dbconn.QueryRowContext(ctx, query, name)
-	var userId int
-	_ = row.Scan(&userId)
+	var userID int
+	_ = row.Scan(&userID)
    
-    return userId
+    return userID
 }
 func (d DBStorage) UserGet(name string) (*repo.User, error) {
 	ok := d.UserIsPresent(name)
