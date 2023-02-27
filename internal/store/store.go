@@ -92,6 +92,19 @@ func (d DBStorage) GetUserNameById(userId int) string {
    
     return name
 }
+func (d DBStorage) GetUserIdByName(name string) int {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	
+    query := `
+	select Id from Users where Name=$1;
+	`
+    row := d.dbconn.QueryRowContext(ctx, query, name)
+	var userId int
+	_ = row.Scan(&userId)
+   
+    return userId
+}
 func (d DBStorage) UserGet(name string) (*repo.User, error) {
 	ok := d.UserIsPresent(name)
 	if !ok {

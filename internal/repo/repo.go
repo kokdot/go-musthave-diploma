@@ -21,6 +21,7 @@ type Repo interface {
 	CheckExistOrderNumber(naumber int) bool
 	GetIdOrderOwner(naumber int) int
 	GetUserNameById(userId int) string
+	GetUserIdByName(name string) int
 	ObtainNewOrder(userId, number int) error
 	// GetOk()
 

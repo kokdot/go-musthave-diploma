@@ -47,16 +47,19 @@ func CheckCookieAutentication(r *http.Request) (string, bool, error) {
 }
 
 func DownloadOrderNumber(w http.ResponseWriter, r *http.Request) {
+	logg.Print("-----------------------------DownloadOrderNumber-------start-------------------------------------------")
 	name, ok, err := CheckCookieAutentication(r)
 	if !ok {
 		logg.Error().Err(err).Send()
 		http.Error(w, "логин или пароль не совпадают. login failed", http.StatusUnauthorized)
 	}
+	logg.Print("Получен запрос для пользователя: ", name, "Проверка cookie прошла успешно.")
 	ok = m.UserIsPresent(name)
 	if !ok {
 		logg.Error().Err(err).Send()	
-		http.Error(w, "такой пользователь не существует. login failed", http.StatusUnauthorized)
+		http.Error(w, "такого пользователя. не существует вам необходимо пройти регистрацию или аутентификацию. login failed", http.StatusUnauthorized)
 	}
+	logg.Print("Данный пользователь присутствует в системе.")
 	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
 		logg.Error().Err(err).Send()	
@@ -64,6 +67,7 @@ func DownloadOrderNumber(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	
 	number, err := strconv.Atoi(string(bodyBytes))
 	if err != nil {
 		logg.Error().Err(err).Send()	
@@ -71,29 +75,40 @@ func DownloadOrderNumber(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	logg.Print("Получен заказ номер: ", number)
 	if !luna.Valid(number) {
 		logg.Error().Err(ErrInvalidFormatNumberOfOrder).Send()	
 		w.Header().Set("content-type", "application/json")
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		return
 	}
+	logg.Print("Проверка luna прошла успешно.")
 	ok = m.CheckExistOrderNumber(number)
+	logg.Print("Провека сущеустаования данного номера заказа: ", ok)
 	var userId int
 	if ok {
+		logg.Print("Данный заказ уже сущетвует.")
 		userId = m.GetIdOrderOwner(number)
+		
+		logg.Print("Id ползователя, чей это заказ: ", userId)
 		userName := m.GetUserNameById(userId)
 		if userName == name {
+			logg.Print("заказ принадлежит пользователю с Id: ", userId)
 			logg.Error().Err(ErrOrderUsedUser).Send()	
 			w.Header().Set("content-type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			return
 		} else {
+			logg.Print("заказ не принадлежит пользователю с Id: ", userId)
 			logg.Error().Err(ErrOrderUsedUnotherUser).Send()	
 			w.Header().Set("content-type", "application/json")
 			w.WriteHeader(http.StatusConflict)
 			return
 		}
+	} else {
+		userId = m.GetUserIdByName(name)
 	}
+	logg.Print("создаем заказ для пользователя с Id: ", userId, "; и номером заказа :  ", number)
 	err = m.ObtainNewOrder(userId, number)
 	if err != nil {
 		logg.Error().Err(err).Send()	
@@ -104,7 +119,7 @@ func DownloadOrderNumber(w http.ResponseWriter, r *http.Request) {
 	logg.Print("новый номер заказа принят в обработку")	
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
-	return
+	// return
 }
 
 func GetOk(w http.ResponseWriter, r *http.Request) {

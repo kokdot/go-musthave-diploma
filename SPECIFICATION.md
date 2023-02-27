@@ -77,7 +77,7 @@
 Формат запроса:
 
 ```
-POST /api/user/register HTTP/1.1
+POST /api/user/register HTTP/1.1 
 Content-Type: application/json
 ...
 
