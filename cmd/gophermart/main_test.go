@@ -174,15 +174,11 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	
-	
-	// fmt.Printf("resp Cookies: %#v\n", resp.Cookies())
-	// fmt.Println("client.Jar: ", client.Jar)
-	_, err = io.Copy(io.Discard, resp.Body)
+	_, err = io.Copy(io.Discard, resp1.Body)
 	if err != nil {
 		fmt.Println(err)
 	}
-	resp.Body.Close()
+	resp1.Body.Close()
 	_, err = io.Copy(io.Discard, resp1.Body)
 	if err != nil {
 		fmt.Println(err)
