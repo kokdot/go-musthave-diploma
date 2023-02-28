@@ -38,8 +38,8 @@ func GetOrderNumber() int {
 	fmt.Println("Answer: ", Valid(n))
 	for {
 		i++
-		n = rand.Intn(1000000)
-		if Valid(n) && n > 100000 && i > j{
+		n = rand.Intn(100000000000000 )// 54011401152
+		if Valid(n) && n > 10000000000000 && i > j{
 			fmt.Println("Number is: ", n, "; index is: ", i)
 			break
 		}

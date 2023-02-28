@@ -249,7 +249,7 @@ func (d DBStorage) CreateTableUsers() error {
 		(
 			Id SERIAL PRIMARY KEY,
 			UserId INTEGER,
-			Number INTEGER,
+			Number BIGINT,
 			FOREIGN KEY (UserId) REFERENCES Users (Id) ON DELETE CASCADE
 		);
 	`
