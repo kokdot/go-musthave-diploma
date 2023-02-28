@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"database/sql"
@@ -35,16 +36,61 @@ func GetLogg(loggReal zerolog.Logger)  {
 func (d DBStorage) GetSeckretKey() []byte {
 	return d.secretKey
 }
+func (d DBStorage) GetListOrders(userID int) *repo.Orders {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+    query := `
+	select Number, Status, Accrual, UploadedAt from Orders where UserId=$1;
+	`
+	rows, err := d.dbconn.QueryContext(ctx, query, userID)
+    if err != nil {
+        return nil
+    }
+    // обязательно закрываем перед возвратом функции
+    defer rows.Close()
+    var orders repo.Orders
+    // пробегаем по всем записям
+    for rows.Next() {
+        var order repo.Order
+		var number int
+		var uploadedAt time.Time
+		var status int
+		var accrual sql.NullInt64
+		err = rows.Scan(&number, &status, &accrual, &uploadedAt)
+        if err != nil {
+            return nil
+        }
+		order.Number = strconv.Itoa(number)
+		order.UploadedAt = uploadedAt.Format(time.RFC3339)
+
+		order.Status = repo.StatusSlice[repo.Status(status)]
+		if accrual.Valid {
+			order.Accrual = int(accrual.Int64)
+		} //else {
+			//order.Accrual = 0
+		//}
+		// fmt.Println("")
+        orders = append(orders, order)
+    }
+    // проверяем на ошибки
+    err = rows.Err()
+    if err != nil {
+        return nil
+    }
+    return &orders
+}
 func (d DBStorage) ObtainNewOrder(userID, number int) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
     query := `INSERT INTO Orders
     (
         UserId, 
-        Number
-    ) values($1, $2)
+        Number, 
+		Status,
+		UploadedAt
+    ) values($1, $2, $3, $4)
     `
-    _, err := d.dbconn.ExecContext(ctx, query, userID, number)
+    _, err := d.dbconn.ExecContext(ctx, query, userID, number, repo.NEW, time.Now())
     if err != nil {
 
 		logg.Printf("не удалось выполнить запрос создания заказа: %v", err)
@@ -136,6 +182,14 @@ func (d DBStorage) UserIsPresent(name string) bool {
 	_ = row.Scan(&ok)
    
     return ok
+}
+
+func (d DBStorage) UserIsPresentReturnUserID(name string) (int, bool) {
+	ok := d.UserIsPresent(name)
+	if !ok {
+		return 0, false
+	}
+	return d.GetUserIDByName(name), true
 }
 func (d DBStorage) UserAuthenticate(u repo.User) (bool, error) {
 	logg.Print("--------------------UserAuthenticate------------1-------------start-------------------------------")
@@ -249,7 +303,10 @@ func (d DBStorage) CreateTableUsers() error {
 		(
 			Id SERIAL PRIMARY KEY,
 			UserId INTEGER,
-			Number BIGINT,
+			Number BIGINT NOT NULL,
+			Accrual INTEGER,
+			Status INTEGER NOT NULL,
+			UploadedAt timestamptz,
 			FOREIGN KEY (UserId) REFERENCES Users (Id) ON DELETE CASCADE
 		);
 	`

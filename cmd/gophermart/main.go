@@ -53,6 +53,7 @@ func main() {
     r.Post("/api/user/test", handler.CheckUserLogin)
     r.Post("/api/user/login", handler.Authentication)
     r.Post("/api/user/orders", handler.DownloadOrderNumber)
+    r.Get("/api/user/orders", handler.UploadOrders)
     err = http.ListenAndServe(address, r)
     logg.Fatal().Err(err).Send()
     // log.Fatal(http.ListenAndServe(":8080", r))

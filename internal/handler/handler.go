@@ -30,6 +30,7 @@ var ErrInternalServerError = errors.New("internal server error")
 var ErrInvalidFormatNumberOfOrder = errors.New("invalid format number of order")//неверный формат номера заказа
 var ErrOrderUsedUser = errors.New("this order being download yet")//номер заказа уже был загружен этим пользователем
 var ErrOrderUsedUnotherUser = errors.New("this order being download yet by unother user")//номер заказа уже был загружен другим пользователем
+var ErrNoDataForAnswer = errors.New("there is no data for answer")//нет данных для ответа
 
 
 var m  repo.Repo
@@ -44,6 +45,41 @@ func GetLogg(loggReal zerolog.Logger)  {
 func CheckCookieAutentication(r *http.Request) (string, bool, error) {
 	name, ok, err := auth.ValidCookie(r, m.GetSeckretKey())
 	return name, ok, err
+}
+
+func UploadOrders(w http.ResponseWriter, r *http.Request) {
+	logg.Print("-----------------------------UploadOrders-------start-------------------------------------------")
+	name, ok, err := CheckCookieAutentication(r)
+	if !ok {
+		logg.Error().Err(err).Send()
+		w.Header().Set("content-type", "application/json")
+		http.Error(w, "логин или пароль не совпадают. login failed", http.StatusUnauthorized)
+	}
+	logg.Print("Получен запрос для пользователя: ", name, "Проверка cookie прошла успешно.")
+	userID, ok := m.UserIsPresentReturnUserID(name)
+	if !ok {
+		logg.Error().Err(err).Send()	
+		w.Header().Set("content-type", "application/json")
+		http.Error(w, "такого пользователя. не существует вам необходимо пройти регистрацию или аутентификацию. login failed", http.StatusUnauthorized)
+	}
+	logg.Print("Данный пользователь присутствует в системе.")
+	orders := m.GetListOrders(userID)
+	logg.Printf("Полученный список заказов: %#v", orders)
+	if len(*orders) == 0 {
+		logg.Error().Err(ErrNoDataForAnswer).Send()	
+		w.Header().Set("content-type", "application/json")
+		http.Error(w, "нет данных для ответа", http.StatusNoContent )
+	}
+ 	bodyBytes, err := json.Marshal(&orders)
+	if err != nil {
+		logg.Error().Err(err).Send()	
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("content-type", "application/json")
+	w.Write(bodyBytes)
+	w.WriteHeader(http.StatusOK)
 }
 
 func DownloadOrderNumber(w http.ResponseWriter, r *http.Request) {

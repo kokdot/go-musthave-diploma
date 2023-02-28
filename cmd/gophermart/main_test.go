@@ -16,6 +16,7 @@ import (
 	"net/url"
 
 	"github.com/kokdot/go-musthave-diploma/internal/luna"
+	"github.com/kokdot/go-musthave-diploma/internal/repo"
 
 	// "time"
 
@@ -178,6 +179,36 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 		assert.Equal(t, "application/json", resp2.Header.Get("Content-Type"))
 		resp2.Body.Close()
 	}
+	t.Run("list of orders for user Vasya", func(t *testing.T) {
+		// bodyBytes := []byte(sNumber)
+		// bodyReader := bytes.NewReader(bodyBytes)
+		req, err = http.NewRequest(http.MethodGet, serverAddress + "/api/user/orders", nil)
+		if err != nil {
+			fmt.Println(err)
+		}
+		// req.Header.Set("Content-Type", "text/plain; charset=UTF-8")
+		req.Header.Add("Accept", "application/json")
+		resp6, err := client.Do(req)
+		if err != nil {
+			fmt.Println(err)
+		}
+		orders := make(repo.Orders, 0)
+		err = json.NewDecoder(resp6.Body).Decode(&orders)
+		if err != nil {
+			fmt.Println(err)
+		}
+		_, err = io.Copy(io.Discard, resp6.Body)
+		if err != nil {
+			fmt.Println(err)
+		}
+		assert.NoError(t, err)
+		assert.Equal(t, 200, resp6.StatusCode)
+		assert.Equal(t, "application/json", resp6.Header.Get("Content-Type"))
+		fmt.Printf("List of orders: %#v", orders)
+		resp6.Body.Close()
+	})
+// }
+
 	// -------------------------------------------Misha-------------------------------------------------------------------
 	var number1 = luna.GetOrderNumber()
 	var sNumber1 = strconv.Itoa(number1)
@@ -251,7 +282,7 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 		assert.Equal(t, "application/json", resp4.Header.Get("Content-Type"))
 		resp4.Body.Close()
 	})
-	t.Run("order of enuther user", func(t *testing.T) {
+	t.Run("order of enother user", func(t *testing.T) {
 		bodyBytes := []byte(sNumber)
 		bodyReader := bytes.NewReader(bodyBytes)
 		req, err = http.NewRequest(http.MethodPost, serverAddress + "/api/user/orders", bodyReader)
@@ -272,6 +303,34 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 		assert.Equal(t, 409, resp5.StatusCode)
 		assert.Equal(t, "application/json", resp5.Header.Get("Content-Type"))
 		resp5.Body.Close()
+	})
+	t.Run("list of orders for user Misha", func(t *testing.T) {
+		// bodyBytes := []byte(sNumber)
+		// bodyReader := bytes.NewReader(bodyBytes)
+		req, err = http.NewRequest(http.MethodGet, serverAddress + "/api/user/orders", nil)
+		if err != nil {
+			fmt.Println(err)
+		}
+		// req.Header.Set("Content-Type", "text/plain; charset=UTF-8")
+		req.Header.Add("Accept", "application/json")
+		resp6, err := client.Do(req)
+		if err != nil {
+			fmt.Println(err)
+		}
+		orders := make(repo.Orders, 0)
+		err = json.NewDecoder(resp6.Body).Decode(&orders)
+		if err != nil {
+			fmt.Println(err)
+		}
+		_, err = io.Copy(io.Discard, resp6.Body)
+		if err != nil {
+			fmt.Println(err)
+		}
+		assert.NoError(t, err)
+		assert.Equal(t, 200, resp6.StatusCode)
+		assert.Equal(t, "application/json", resp6.Header.Get("Content-Type"))
+		fmt.Printf("List of orders: %#v", orders)
+		resp6.Body.Close()
 	})
 }
 
