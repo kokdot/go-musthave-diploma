@@ -47,6 +47,34 @@ func CheckCookieAutentication(r *http.Request) (string, bool, error) {
 	return name, ok, err
 }
 
+func Balance(w http.ResponseWriter, r *http.Request) {
+	logg.Print("-----------------------------Balance-------start-------------------------------------------")
+	name, ok, err := CheckCookieAutentication(r)
+	if !ok {
+		logg.Error().Err(err).Send()
+		w.Header().Set("content-type", "application/json")
+		http.Error(w, "логин или пароль не совпадают. login failed", http.StatusUnauthorized)
+	}
+	logg.Print("Получен запрос для пользователя: ", name, "Проверка cookie прошла успешно.")
+	userID, ok := m.UserIsPresentReturnUserID(name)
+	if !ok {
+		logg.Error().Err(err).Send()	
+		w.Header().Set("content-type", "application/json")
+		http.Error(w, "такого пользователя. не существует вам необходимо пройти регистрацию или аутентификацию. login failed", http.StatusUnauthorized)
+	}
+	logg.Print("Данный пользователь присутствует в системе.")
+	balance := m.GetBalance(userID)
+	bodyBytes, err := json.Marshal(&balance)
+	if err != nil {
+		logg.Error().Err(err).Send()	
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("content-type", "application/json")
+	w.Write(bodyBytes)
+	w.WriteHeader(http.StatusOK)
+}
 func UploadOrders(w http.ResponseWriter, r *http.Request) {
 	logg.Print("-----------------------------UploadOrders-------start-------------------------------------------")
 	name, ok, err := CheckCookieAutentication(r)

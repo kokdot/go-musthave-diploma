@@ -36,6 +36,36 @@ func GetLogg(loggReal zerolog.Logger)  {
 func (d DBStorage) GetSeckretKey() []byte {
 	return d.secretKey
 }
+func (d DBStorage) GetAccrualForUser(userID int) int {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	
+    query := `
+	select SUM(Accrual) from Orders where UserId=$1;
+	`
+    row := d.dbconn.QueryRowContext(ctx, query, userID)
+	var sum int
+	_ = row.Scan(&sum)
+   
+    return sum
+}
+func (d DBStorage) GetBalance(userID int) *repo.Balance {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	
+    query := `
+	select Withdrawn from Users where UserId=$1;
+	`
+    row := d.dbconn.QueryRowContext(ctx, query, userID)
+	var withdrawn int
+	_ = row.Scan(&withdrawn)
+	current := d.GetAccrualForUser(userID)
+   var balance = repo.Balance{
+		Current: float64(current),
+		Withdrawn: withdrawn,
+   }
+    return &balance
+}
 func (d DBStorage) GetListOrders(userID int) *repo.Orders {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -297,7 +327,8 @@ func (d DBStorage) CreateTableUsers() error {
         (
 			Id SERIAL PRIMARY KEY,
             Name VARCHAR(255) NOT NULL UNIQUE,
-            Password VARCHAR(255)
+            Password VARCHAR(255),
+			Withdrawn INTEGER
         );
 		CREATE TABLE Orders
 		(

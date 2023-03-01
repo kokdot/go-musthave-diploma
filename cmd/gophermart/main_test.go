@@ -197,6 +197,7 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 		if err != nil {
 			fmt.Println(err)
 		}
+		fmt.Printf("Подучен спиок заказов: %#v", orders)
 		_, err = io.Copy(io.Discard, resp6.Body)
 		if err != nil {
 			fmt.Println(err)
@@ -207,7 +208,6 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 		fmt.Printf("List of orders: %#v", orders)
 		resp6.Body.Close()
 	})
-// }
 
 	// -------------------------------------------Misha-------------------------------------------------------------------
 	var number1 = luna.GetOrderNumber()

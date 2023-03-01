@@ -12,6 +12,10 @@ const (
 	INVALID
 	PROCESSED
 )
+type Balance struct {
+	Current float64 `json:"current"`
+	Withdrawn int `json:"withdrawn"`
+}
 var StatusSlice = map[Status]string{ 
 	NEW: "NEW",
 	PROCESSING: "PROCESSING",
@@ -43,6 +47,8 @@ type Repo interface {
 	ObtainNewOrder(userID, number int) error
 	GetListOrders(userID int) *Orders
 	UserIsPresentReturnUserID(name string) (int, bool)
+	GetBalance(userID int) *Balance
+	GetAccrualForUser(userID int) int
 
 	// GetOk()
 
