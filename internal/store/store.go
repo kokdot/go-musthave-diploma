@@ -2,7 +2,7 @@ package store
 
 import (
 	"context"
-	"errors"
+	// "errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -16,10 +16,7 @@ import (
 	"github.com/kokdot/go-musthave-diploma/internal/repo"
 	"github.com/kokdot/go-musthave-diploma/internal/toking"
 )
-var ErrUserIsPresent error = errors.New("user is present")
-var ErrUserNotPresent error = errors.New("user not present")
-var ErrPasswordIsEmpty = errors.New("password is empty")
-var ErrPasswordAndLoginMismatch = errors.New("password and login mismatch")
+
 var logg zerolog.Logger
 type DBStorage struct {
 	// StoreMap      *StoreMap
@@ -35,6 +32,140 @@ func GetLogg(loggReal zerolog.Logger)  {
 
 func (d DBStorage) GetSeckretKey() []byte {
 	return d.secretKey
+}
+func (d DBStorage) UpdateAccrual(allOrdersMap *repo.AllOrdersMap) {
+	for numberStr, order := range *allOrdersMap {
+		number, err := strconv.Atoi(numberStr)
+		if err != nil {
+			logg.Error().Err(err).Send()
+		}
+		if number == 0 {
+			continue
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel() 
+		query := `UPDATE Orders
+			SET
+			Accreual = $1
+			WHERE Id = $2
+		`
+		_, err = d.dbconn.ExecContext(ctx, query, order.Accrual, order.ID)
+		if err != nil {
+			logg.Error().Err(err).Send()
+		}
+	}
+}
+func (d DBStorage) GetNotDoneOrders(allOrdersMap *repo.AllOrdersMap) error {
+	logg.Print("----------------------GetNotDoneOrders----start--------------------------------")
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+    query := `
+	select 
+	Id,
+	Number
+	from Orders where Status < 4;
+	`
+    rows, err := d.dbconn.QueryContext(ctx, query)
+	if err != nil {
+		logg.Error().Err(err).Send()
+        return err
+    }
+    // обязательно закрываем перед возвратом функции
+    defer rows.Close()
+    // пробегаем по всем записям
+    for rows.Next() {
+		var order repo.Order
+        var number int
+		var id int
+		err = rows.Scan(&id, &number)
+		// err = rows.Scan(&order.ID, &number)
+        if err != nil {
+			logg.Error().Err(err).Send()
+            return err
+        }
+		numberStr:= strconv.Itoa(number)
+		order.Number = numberStr
+		order.ID = id
+		logg.Printf("order: %#v", order)
+		logg.Printf("allOrdersMap: %#v", *allOrdersMap)
+        (*allOrdersMap)[numberStr] = order
+    }
+    // проверяем на ошибки
+    err = rows.Err()
+    if err != nil {
+		logg.Error().Err(err).Send()
+        return err
+    }
+    return nil
+}
+func (d DBStorage) GetBalanceWithdrawals(userID int) (*repo.Withdraws, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+    query := `
+	select 
+	number
+	(select Number from Orders where OrderId = OrderId as number), 
+	Withdrawn, 
+	PrcessedAt
+	from Withdrawns where UserId=$1;
+	`
+    rows, err := d.dbconn.QueryContext(ctx, query, userID)
+	if err != nil {
+        return nil, err
+    }
+    // обязательно закрываем перед возвратом функции
+    defer rows.Close()
+    var withdraws repo.Withdraws
+    // пробегаем по всем записям
+    for rows.Next() {
+		var withdraw repo.Withdraw
+        var withdrawn int
+		var number int
+		var processedAt time.Time
+		err = rows.Scan(&number, &withdrawn, &processedAt)
+        if err != nil {
+            return nil, err
+        }
+		withdraw.Order = strconv.Itoa(number)
+		withdraw.Sum = withdrawn
+		withdraw.ProcessedAt = processedAt.Format(time.RFC3339)
+        withdraws = append(withdraws, withdraw)
+    }
+    // проверяем на ошибки
+    err = rows.Err()
+    if err != nil {
+        return nil, err
+    }
+    return &withdraws, nil
+}
+
+func (d DBStorage) PutWithdraw(userID int, withdraw repo.Withdraw) (bool, error) {
+	accrual := d.GetAccrualForUser(userID)
+	if withdraw.Sum > accrual {
+		return false, repo.ErrNoMoney
+	}
+	orderID, err := d.ObtainNewOrder(userID, withdraw.Sum)
+	if err != nil {
+		logg.Printf("не удалось загрузить новый заказ: %v", err)
+		return false, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel() 
+	query := `INSERT INTO Withdraws
+    (
+        UserId, 
+        OrderId, 
+        Withdraw, 
+		ProcessedAt
+    ) values($1, $2, $3, $4);
+    `
+    _, err = d.dbconn.ExecContext(ctx, query, userID, orderID, withdraw.Sum, time.Now())
+    if err != nil {
+		logg.Printf("не удалось выполнить запрос на списание: %v", err)
+		return false, err
+	}
+	
+	return true, nil
 }
 func (d DBStorage) GetAccrualForUser(userID int) int {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -54,7 +185,7 @@ func (d DBStorage) GetBalance(userID int) *repo.Balance {
 	defer cancel()
 	
     query := `
-	select Withdrawn from Users where UserId=$1;
+	select SUM(Withdrawn) from Withdrawns where UserId=$1;
 	`
     row := d.dbconn.QueryRowContext(ctx, query, userID)
 	var withdrawn int
@@ -109,7 +240,7 @@ func (d DBStorage) GetListOrders(userID int) *repo.Orders {
     }
     return &orders
 }
-func (d DBStorage) ObtainNewOrder(userID, number int) error {
+func (d DBStorage) ObtainNewOrder(userID, number int) (int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
     query := `INSERT INTO Orders
@@ -118,15 +249,16 @@ func (d DBStorage) ObtainNewOrder(userID, number int) error {
         Number, 
 		Status,
 		UploadedAt
-    ) values($1, $2, $3, $4)
+    ) values($1, $2, $3, $4) RETURNING Id;
     `
-    _, err := d.dbconn.ExecContext(ctx, query, userID, number, repo.NEW, time.Now())
-    if err != nil {
-
+    row := d.dbconn.QueryRowContext(ctx, query, userID, number, repo.NEW, time.Now())
+	var orderID int
+	err := row.Scan(&orderID)
+	if err != nil {
 		logg.Printf("не удалось выполнить запрос создания заказа: %v", err)
-		return err
+		return 0, err
 	}
-	return nil
+	return orderID, nil
 }
 
 func (d DBStorage) CheckExistOrderNumber(number int) bool {
@@ -184,7 +316,7 @@ func (d DBStorage) GetUserIDByName(name string) int {
 func (d DBStorage) UserGet(name string) (*repo.User, error) {
 	ok := d.UserIsPresent(name)
 	if !ok {
-		return nil, ErrUserNotPresent
+		return nil, repo.ErrUserNotPresent
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -226,18 +358,18 @@ func (d DBStorage) UserAuthenticate(u repo.User) (bool, error) {
 	u1ptr, err := d.UserGet(u.Name)
 	if err != nil {
 		logg.Error().Err(err).Send()
-		return false, ErrUserNotPresent
+		return false, repo.ErrUserNotPresent
 	}
 	if u.Password == "" {
-		logg.Error().Err(ErrPasswordIsEmpty).Send()
-		return false, ErrPasswordIsEmpty
+		logg.Error().Err(repo.ErrPasswordIsEmpty).Send()
+		return false, repo.ErrPasswordIsEmpty
 	}
 	u.Password = toking.Sha256([]byte(u.Password))
 	logg.Print("after hash u.Password: ", u.Password)
 	ok := u.Password == u1ptr.Password
 	if !ok {
-		logg.Error().Err(ErrPasswordAndLoginMismatch).Send()
-		return false, ErrPasswordAndLoginMismatch
+		logg.Error().Err(repo.ErrPasswordAndLoginMismatch).Send()
+		return false, repo.ErrPasswordAndLoginMismatch
 	} else {
 		logg.Print("Аутентификация прошла успешно.")
 		return true, nil
@@ -247,10 +379,10 @@ func (d DBStorage) UserRegistrate(u repo.User) error {
 	logg.Print("--------------------UserRegistrate------------1-------------start-------------------------------")
 	ok := d.UserIsPresent(u.Name)
 	if  ok {
-		return ErrUserIsPresent
+		return repo.ErrUserIsPresent
 	}
 	if u.Password == "" {
-		return ErrPasswordIsEmpty
+		return repo.ErrPasswordIsEmpty
 	}
 	u.Password = toking.Sha256([]byte(u.Password))
 	logg.Print("after hash u.Password: ", u.Password)
@@ -321,6 +453,7 @@ func (d DBStorage) CreateTableUsers() error {
 	defer cancel()
 	
     query := `
+		DROP TABLE IF EXISTS Withdrawns;
 		DROP TABLE IF EXISTS Orders;
 		DROP TABLE IF EXISTS Users;
 		CREATE TABLE Users
@@ -339,6 +472,16 @@ func (d DBStorage) CreateTableUsers() error {
 			Status INTEGER NOT NULL,
 			UploadedAt timestamptz,
 			FOREIGN KEY (UserId) REFERENCES Users (Id) ON DELETE CASCADE
+		);
+		CREATE TABLE Withdrawns
+		(
+			Id SERIAL PRIMARY KEY,
+			UserId INTEGER,
+			OrderId INTEGER,
+			Withdrawn INTEGER,
+			ProcessedAt timestamptz,
+			FOREIGN KEY (UserId) REFERENCES Users (Id) ON DELETE CASCADE,
+			FOREIGN KEY (OrderId) REFERENCES Orders (Id) ON DELETE CASCADE
 		);
 	`
     _, err := d.dbconn.ExecContext(ctx, query)

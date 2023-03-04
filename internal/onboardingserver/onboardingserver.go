@@ -10,7 +10,7 @@ import (
     "github.com/rs/zerolog/log"
 )
 const (
-    Address = "127.0.0.1:8080"
+    Address = "127.0.0.1:8081"
     AccrualSysemAddress = ""
     DataBaseURI = "postgres://postgres:postgrespw@localhost:49153"
     Debug = false
@@ -40,7 +40,7 @@ func OnboardingServer() (string, string, string, zerolog.Logger) {
         logg.Print(err)
     }
 
-    addressPtr := flag.String("a", "127.0.0.1:8080", "ip adddress of server")
+    addressPtr := flag.String("a", "127.0.0.1:8081", "ip adddress of server")
     accrualSysemAddressPtr := flag.String("r", "", "address system of accrual")
     DataBaseURIPtr := flag.String("d", "", "Data Base URI")
     debug := flag.Bool("debug", false, "sets log level to debug")
@@ -83,7 +83,7 @@ func OnboardingServer() (string, string, string, zerolog.Logger) {
     if cfg.DataBaseURI != "" {
         dataBaseURIReal	= cfg.DataBaseURI
     }
-    logg.Print("--------------------------const-------------server------------------")
+    logg.Print("----------OnboardingServer-------------has-finished-----------")
     logg.Print("Address:  ", Address)
     logg.Print("AccrualSysemAddress:  ", AccrualSysemAddress)
     logg.Print("DataBaseURI:  ", DataBaseURI)
@@ -100,7 +100,6 @@ func OnboardingServer() (string, string, string, zerolog.Logger) {
     logg.Print("addressReal:", addressReal)
     logg.Print("accrualSysemAddressReal:", accrualSysemAddressReal)
     logg.Print("dataBaseURIReal:", dataBaseURIReal)
-    logg.Print("------------------------Ok---------------------------------")
     return addressReal, accrualSysemAddressReal, dataBaseURIReal, log.Logger
 }
 

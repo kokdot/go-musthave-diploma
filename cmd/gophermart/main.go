@@ -1,26 +1,25 @@
-      package main
+package main
 
 import (
-	// "log"
+	"errors"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	// "fmt"
-	// "time"
-
+	"github.com/kokdot/go-musthave-diploma/internal/accrual"
 	"github.com/kokdot/go-musthave-diploma/internal/handler"
 	"github.com/kokdot/go-musthave-diploma/internal/interfaceinit"
 	"github.com/kokdot/go-musthave-diploma/internal/onboardingserver"
+	"github.com/kokdot/go-musthave-diploma/internal/repo"
 	"github.com/kokdot/go-musthave-diploma/internal/store"
 )
 
 
-// var logg = log.Logger
 func main() { 
     address, accrualSysemAddress, dataBaseURI, logg  := onboardingserver.OnboardingServer()
-    logg.Print("--------------------main-------------------------------------------")
+    logg.Print("----------------------------main------------start-------------------------")
     logg.Print("address:  ", address)
     logg.Print("accrualSysemAddress:  ", accrualSysemAddress)
     logg.Print("dataBaseURI:  ", dataBaseURI)
@@ -32,9 +31,9 @@ func main() {
     handler.PutM(m)
     handler.GetLogg(logg)
     store.GetLogg(logg)
-    // metricsserver.GetLogg(logg)0
-    logg.Printf("interface m:   %#v", m)
-    logg.Print("--------------------main--started-----------------------------------------")
+    accrual.GetLogg(logg)
+    logg.Printf("---------interface m:   %#v", m)
+    logg.Print("---------------------------main-----------------is-going--------------")
     
     // определяем роутер chi
     r := chi.NewRouter()
@@ -43,9 +42,7 @@ func main() {
     r.Use(middleware.RealIP)
     r.Use(middleware.Logger)    
     r.Use(middleware.Recoverer)
-    // r.Use(middleware.Compress(5, "gzip"))
     r.Use(middleware.Compress(5))
-    // r.Get("/", handler.GetAll)
     // r.Get("/ping", handler.GetPing)
 
     r.Get("/", handler.GetOk)
@@ -55,72 +52,33 @@ func main() {
     r.Post("/api/user/orders", handler.DownloadOrderNumber)
     r.Get("/api/user/orders", handler.UploadOrders)
     r.Get("/api/user/balance", handler.Balance)
+    r.Get("/api/user/withdraw", handler.Withdraw)
+    r.Get("/api/user/balance/withdrawals", handler.GetBalanceWithdrawals)
+    var allOrdersMap = make(repo.AllOrdersMap, 0)
+    go func(allOrdersMap *repo.AllOrdersMap) {
+		for {
+			<-time.After(time.Second * 5)
+            list := m.GetListOrders(1)
+
+            logg.Print("----------------------------list Vasya: -----------------------")
+            logg.Printf("list Vasya: %#v", *list)
+            err := m.GetNotDoneOrders(allOrdersMap)
+            if err != nil {
+                logg.Error().Err(err).Send()
+                continue
+            }
+            err = accrual.GetAccrual(allOrdersMap)
+            if errors.Is(err, repo.Err429) {
+                <-time.After(time.Second * 60)
+                continue
+            }
+            if err != nil {
+                logg.Error().Err(err).Send()
+                continue
+            }
+			
+		}
+	}(&allOrdersMap)
     err = http.ListenAndServe(address, r)
     logg.Fatal().Err(err).Send()
-    // log.Fatal(http.ListenAndServe(":8080", r))
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // r.Post("/updates1/", handler.PostUpdateByBatch1)
-    
-    // r.Route("/update", func(r chi.Router) {
-    //     r.Post("/", handler.PostUpdate)
-    //     r.Route("/counter", func(r chi.Router) {
-    //         r.Route("/{nameData}/{valueData}", func(r chi.Router) {
-    //             r.Use(handler.PostCounterCtx)
-    //             r.Post("/", handler.PostUpdateCounter)
-    //         })
-    //     })
-    //     r.Route("/gauge", func(r chi.Router) {
-    //         r.Route("/{nameData}/{valueData}", func(r chi.Router) {
-    //             r.Use(handler.PostGaugeCtx)
-    //             r.Post("/", handler.PostUpdateGauge)
-    //         })
-    //     })
-    //     r.Route("/",func(r chi.Router) {
-    //         r.Post("/*", func(w http.ResponseWriter, r *http.Request) {
-	// 	        w.Header().Set("content-type", "text/plain; charset=utf-8")
-    //             w.WriteHeader(http.StatusNotImplemented)
-    //             // fmt.Fprint(w, "line: 52; http.StatusNotImplemented")
-	//         })
-    //     })
-    // })
-
-    // r.Route("/value", func(r chi.Router) {
-    //     r.Post("/", handler.GetValue)
-	// 	r.Route("/counter", func(r chi.Router){
-    //         r.Route("/{nameData}", func(r chi.Router) {
-    //             r.Use(handler.GetCtx)
-    //             r.Get("/", handler.GetCounter)
-    //         })
-    //     })
-    //    	r.Route("/gauge", func(r chi.Router){
-    //         r.Route("/{nameData}", func(r chi.Router) {
-    //             r.Use(handler.GetCtx)
-    //             r.Get("/", handler.GetGauge)
-    //         })
-    //     })
-	// })
-
-
-

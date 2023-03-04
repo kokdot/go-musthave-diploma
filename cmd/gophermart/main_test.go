@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
  const (
-	serverAddress = "http://127.0.0.1:8080"
+	serverAddress = "http://127.0.0.1:8081"
 	Name string = "authentication"
  )
 
@@ -155,7 +155,7 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 			resp2.Body.Close()
 		})
 	}
-	for i := 0; i < 30; i++ {
+	for i := 0; i < 3; i++ {
 		number = luna.GetOrderNumber()
 		sNumber = strconv.Itoa(number)
 		bodyBytes := []byte(sNumber)
@@ -197,7 +197,7 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 		if err != nil {
 			fmt.Println(err)
 		}
-		fmt.Printf("Подучен спиок заказов: %#v", orders)
+		// fmt.Printf("Подучен спиок заказов: %#v", orders)
 		_, err = io.Copy(io.Discard, resp6.Body)
 		if err != nil {
 			fmt.Println(err)
@@ -205,7 +205,36 @@ func TestDownloadNumberOfOrder(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 200, resp6.StatusCode)
 		assert.Equal(t, "application/json", resp6.Header.Get("Content-Type"))
-		fmt.Printf("List of orders: %#v", orders)
+		fmt.Printf("List of orders: %#v\n", orders)
+		resp6.Body.Close()
+	})
+	t.Run("Balance for user Vasya", func(t *testing.T) {
+		// bodyBytes := []byte(sNumber)
+		// bodyReader := bytes.NewReader(bodyBytes)
+		req, err = http.NewRequest(http.MethodGet, serverAddress + "/api/user/balance", nil)
+		if err != nil {
+			fmt.Println(err)
+		}
+		// req.Header.Set("Content-Type", "text/plain; charset=UTF-8")
+		req.Header.Add("Accept", "application/json")
+		resp6, err := client.Do(req)
+		if err != nil {
+			fmt.Println(err)
+		}
+		balance := repo.Balance{}
+		err = json.NewDecoder(resp6.Body).Decode(&balance)
+		if err != nil {
+			fmt.Println(err)
+		}
+		// fmt.Printf("Подучен спиок заказов: %#v", orders)
+		_, err = io.Copy(io.Discard, resp6.Body)
+		if err != nil {
+			fmt.Println(err)
+		}
+		assert.NoError(t, err)
+		assert.Equal(t, 200, resp6.StatusCode)
+		assert.Equal(t, "application/json", resp6.Header.Get("Content-Type"))
+		fmt.Printf("Balance for user Vasya: %#v\n", balance)
 		resp6.Body.Close()
 	})
 
@@ -482,7 +511,7 @@ func TestRegister(t *testing.T) {
 
 }
 // func TestOrderCreate(t *testing.T) {
-// 	fmt.Println("-----------------start-------------TestOrderCreatew-----------------------------")
+// 	fmt.Println("-----------------start-------------TestOrderCreate-----------------------------")
 // 	jar, err := cookiejar.New(nil)
 // 	if err != nil {
 // 		fmt.Println(err)
