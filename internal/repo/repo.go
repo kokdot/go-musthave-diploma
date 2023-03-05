@@ -32,12 +32,12 @@ var Err429 = errors.New("429")//429
 
 type Withdraw struct {
 	Order string `json:"order"`
-	Sum int `json:"sum"`
+	Sum float64 `json:"sum"`
 	ProcessedAt string `json:"processed_at"`
 }
 type Balance struct {
 	Current float64 `json:"current"`
-	Withdrawn int `json:"withdrawn"`
+	Withdrawn float64 `json:"withdrawn"`
 }
 var StatusSlice = map[Status]string{ 
 	NEW: "NEW",
@@ -61,7 +61,7 @@ type Order struct {
 	ID int		`json:"-"`
 	Number string `json:"number"`
 	Status string `json:"status"`
-	Accrual int `json:"accrual,omitempty"`
+	Accrual float64 `json:"accrual,omitempty"`
 	UploadedAt string `json:"uploaded_at"`
 }
 type Orders []Order
@@ -82,7 +82,7 @@ type Repo interface {
 	GetListOrders(userID int) *Orders
 	UserIsPresentReturnUserID(name string) (int, bool)
 	GetBalance(userID int) *Balance
-	GetAccrualForUser(userID int) int
+	GetAccrualForUser(userID int) float64
 	PutWithdraw(userID int, withdraw Withdraw) (bool, error)
 	GetBalanceWithdrawals(userID int) (*Withdraws, error)
 	UpdateAccrual(allOrdersMap *AllOrdersMap)

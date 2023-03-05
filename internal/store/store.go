@@ -49,7 +49,8 @@ func (d DBStorage) UpdateAccrual(allOrdersMap *repo.AllOrdersMap) {
 			Accreual = $1
 			WHERE Id = $2
 		`
-		_, err = d.dbconn.ExecContext(ctx, query, order.Accrual, order.ID)
+		accrual := int(order.Accrual * 100)
+		_, err = d.dbconn.ExecContext(ctx, query, accrual, order.ID)
 		if err != nil {
 			logg.Error().Err(err).Send()
 		}
@@ -127,7 +128,7 @@ func (d DBStorage) GetBalanceWithdrawals(userID int) (*repo.Withdraws, error) {
             return nil, err
         }
 		withdraw.Order = strconv.Itoa(number)
-		withdraw.Sum = withdrawn
+		withdraw.Sum = float64(withdrawn) / 100
 		withdraw.ProcessedAt = processedAt.Format(time.RFC3339)
         withdraws = append(withdraws, withdraw)
     }
@@ -144,7 +145,7 @@ func (d DBStorage) PutWithdraw(userID int, withdraw repo.Withdraw) (bool, error)
 	if withdraw.Sum > accrual {
 		return false, repo.ErrNoMoney
 	}
-	orderID, err := d.ObtainNewOrder(userID, withdraw.Sum)
+	orderID, err := d.ObtainNewOrder(userID, int(withdraw.Sum * 100))
 	if err != nil {
 		logg.Printf("не удалось загрузить новый заказ: %v", err)
 		return false, err
@@ -159,7 +160,8 @@ func (d DBStorage) PutWithdraw(userID int, withdraw repo.Withdraw) (bool, error)
 		ProcessedAt
     ) values($1, $2, $3, $4);
     `
-    _, err = d.dbconn.ExecContext(ctx, query, userID, orderID, withdraw.Sum, time.Now())
+    withdrawn := int(withdraw.Sum * 100)
+	_, err = d.dbconn.ExecContext(ctx, query, userID, orderID, withdrawn, time.Now())
     if err != nil {
 		logg.Printf("не удалось выполнить запрос на списание: %v", err)
 		return false, err
@@ -167,7 +169,7 @@ func (d DBStorage) PutWithdraw(userID int, withdraw repo.Withdraw) (bool, error)
 	
 	return true, nil
 }
-func (d DBStorage) GetAccrualForUser(userID int) int {
+func (d DBStorage) GetAccrualForUser(userID int) float64 {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	
@@ -178,7 +180,7 @@ func (d DBStorage) GetAccrualForUser(userID int) int {
 	var sum int
 	_ = row.Scan(&sum)
    
-    return sum
+    return float64(sum) / 100
 }
 func (d DBStorage) GetBalance(userID int) *repo.Balance {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -193,7 +195,7 @@ func (d DBStorage) GetBalance(userID int) *repo.Balance {
 	current := d.GetAccrualForUser(userID)
    var balance = repo.Balance{
 		Current: float64(current),
-		Withdrawn: withdrawn,
+		Withdrawn: float64(withdrawn) / 100,
    }
     return &balance
 }
@@ -226,7 +228,7 @@ func (d DBStorage) GetListOrders(userID int) *repo.Orders {
 
 		order.Status = repo.StatusSlice[repo.Status(status)]
 		if accrual.Valid {
-			order.Accrual = int(accrual.Int64)
+			order.Accrual = float64(accrual.Int64) / 100
 		} //else {
 			//order.Accrual = 0
 		//}
@@ -354,7 +356,7 @@ func (d DBStorage) UserIsPresentReturnUserID(name string) (int, bool) {
 	return d.GetUserIDByName(name), true
 }
 func (d DBStorage) UserAuthenticate(u repo.User) (bool, error) {
-	logg.Print("--------------------UserAuthenticate------------1-------------start-------------------------------")
+	logg.Print("--------------------UserAuthenticate------------1-------------start--------------")
 	u1ptr, err := d.UserGet(u.Name)
 	if err != nil {
 		logg.Error().Err(err).Send()
@@ -376,7 +378,7 @@ func (d DBStorage) UserAuthenticate(u repo.User) (bool, error) {
 	}
 }
 func (d DBStorage) UserRegistrate(u repo.User) error {
-	logg.Print("--------------------UserRegistrate------------1-------------start-------------------------------")
+	logg.Print("--------------------UserRegistrate------------1-------------start---------------")
 	ok := d.UserIsPresent(u.Name)
 	if  ok {
 		return repo.ErrUserIsPresent
