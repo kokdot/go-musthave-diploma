@@ -29,7 +29,7 @@ func main() {
         logg.Printf("\nthere in error in starting interface and restore data: %s", err)
     }
     handler.PutM(m)
-    handler.GetLogg(logg)
+    handler.GetLogg(logg, accrualSysemAddress)
     store.GetLogg(logg)
     accrual.GetLogg(logg)
     logg.Printf("---------interface m:   %#v", m)
@@ -79,6 +79,6 @@ func main() {
 			
 		}
 	}(&allOrdersMap)
-    err = http.ListenAndServe(accrualSysemAddress, r)
+    err = http.ListenAndServe(address, r)
     logg.Fatal().Err(err).Send()
 }

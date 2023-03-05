@@ -11,9 +11,11 @@ import (
 	"github.com/kokdot/go-musthave-diploma/internal/repo"
 )
 var logg zerolog.Logger
+var accrualSysemAddress string
 var B  = make(repo.AllOrdersMap, 0)
-func GetLogg(loggReal zerolog.Logger)  {
+func GetLogg(loggReal zerolog.Logger, accrualSysemAddressReal string)  {
 	logg = loggReal
+	accrualSysemAddress = accrualSysemAddressReal 
 }
 func GetAccrual(orders *repo.AllOrdersMap) error {
 	logg.Print("-----------------------GetAccrual------------start----------")
@@ -23,9 +25,10 @@ func GetAccrual(orders *repo.AllOrdersMap) error {
 		logg.Printf("number: %v\n", number)
 		logg.Printf("order: %v\n", order)
 		var order1 repo.Order
-		url := fmt.Sprintf("http://localhost:8080/api/orders/%s", number)
-		logg.Printf("---------------------------url: %v\n", url)
-		request, err := http.NewRequest(http.MethodGet, url, nil)
+		
+		// url := fmt.Sprintf("http://localhost:8080/api/orders/%s", number)
+		logg.Printf("---------------------------url: %v\n", accrualSysemAddress)
+		request, err := http.NewRequest(http.MethodGet, accrualSysemAddress, nil)
 		if err != nil {
 			logg.Error().Err(err).Send()
 			logg.Print("-----------GetAccrual-------------return-----------------------")
