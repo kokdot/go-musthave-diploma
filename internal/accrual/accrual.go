@@ -73,6 +73,8 @@ func GetAccrual(orders *repo.AllOrdersMap) error {
 			logg.Printf("orders: %#v", orders)
 		case 429:
 			logg.Print("-----------GetAccrual-------------return-----------------------")
+			timeout := response.Header.Get("Retry-After")
+			logg.Printf("Retry-After type: %Tv\n          , value: %v\n", timeout, timeout)
 			return repo.Err429
 		}
 

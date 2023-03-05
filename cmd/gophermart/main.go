@@ -58,10 +58,10 @@ func main() {
     go func(allOrdersMap *repo.AllOrdersMap) {
 		for {
 			<-time.After(time.Second * 5)
-            list := m.GetListOrders(1)
-
-            logg.Print("----------------------------list Vasya: -----------------------")
-            logg.Printf("list Vasya: %#v", *list)
+            // list := m.GetListOrders(1)
+            // logg.Print("----------------------------list Vasya: -----------------------")
+            // logg.Printf("list Vasya: %#v", *list)
+            
             err := m.GetNotDoneOrders(allOrdersMap)
             if err != nil {
                 logg.Error().Err(err).Send()
@@ -76,8 +76,9 @@ func main() {
                 logg.Error().Err(err).Send()
                 continue
             }
-			
+			m.UpdateAccrual(allOrdersMap)
 		}
+        
 	}(&allOrdersMap)
     err = http.ListenAndServe(address, r)
     logg.Fatal().Err(err).Send()
