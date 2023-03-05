@@ -39,6 +39,7 @@ func GetAccrual(orders *repo.AllOrdersMap) error {
 		requestDump, err := httputil.DumpRequest(request, true)
 		if err != nil {
 			fmt.Println(err.Error())
+
 		}
 		logg.Print("request Dump: ", string(requestDump)) 
 		response, err := client.Do(request)
@@ -66,6 +67,9 @@ func GetAccrual(orders *repo.AllOrdersMap) error {
 			}
 			order.Accrual = order1.Accrual
 			order.Status = order1.Status
+			logg.Printf("order: %#v", order)
+			logg.Printf("order1: %#v", order1)
+			logg.Printf("orders: %#v", orders)
 		case "429":
 			logg.Print("-----------GetAccrual-------------return-----------------------")
 			return repo.Err429
