@@ -49,8 +49,8 @@ func GetAccrual(orders *repo.AllOrdersMap) error {
 			return err
 		}
 		logg.Printf("---------------------!!!!!!!!!!!!!!!!!!!!----response: %#v", response)
-		switch response.Status {
-		case "200":
+		switch response.StatusCode {
+		case 200:
 			logg.Print("-----------GetAccrual-------------status-OK-----------------------")
 			
 			bodyBytes, err := io.ReadAll(response.Body)
@@ -70,7 +70,7 @@ func GetAccrual(orders *repo.AllOrdersMap) error {
 			logg.Printf("order: %#v", order)
 			logg.Printf("order1: %#v", order1)
 			logg.Printf("orders: %#v", orders)
-		case "429":
+		case 429:
 			logg.Print("-----------GetAccrual-------------return-----------------------")
 			return repo.Err429
 		}
