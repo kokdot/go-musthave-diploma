@@ -26,9 +26,10 @@ func GetAccrual(orders *repo.AllOrdersMap) error {
 		logg.Printf("order: %v\n", order)
 		var order1 repo.Order
 		
+		url := fmt.Sprintf("%s/api/orders/%s", accrualSysemAddress, number)
 		// url := fmt.Sprintf("http://localhost:8080/api/orders/%s", number)
-		logg.Printf("---------------------------url: %v\n", accrualSysemAddress)
-		request, err := http.NewRequest(http.MethodGet, accrualSysemAddress, nil)
+		logg.Printf("---------------------------url: %v\n", url)
+		request, err := http.NewRequest(http.MethodGet, url, nil)
 		if err != nil {
 			logg.Error().Err(err).Send()
 			logg.Print("-----------GetAccrual-------------return-----------------------")
