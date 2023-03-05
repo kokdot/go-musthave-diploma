@@ -46,7 +46,7 @@ func (d DBStorage) UpdateAccrual(allOrdersMap *repo.AllOrdersMap) {
 		defer cancel() 
 		query := `UPDATE Orders
 			SET
-			Accreual = $1
+			Accrual = $1
 			WHERE Id = $2
 		`
 		accrual := int(order.Accrual * 100)
