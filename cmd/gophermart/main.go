@@ -29,9 +29,9 @@ func main() {
         logg.Printf("\nthere in error in starting interface and restore data: %s", err)
     }
     handler.PutM(m)
-    handler.GetLogg(logg, accrualSysemAddress)
+    handler.GetLogg(logg)
     store.GetLogg(logg)
-    accrual.GetLogg(logg)
+    accrual.GetLogg(logg, accrualSysemAddress)
     logg.Printf("---------interface m:   %#v", m)
     logg.Print("---------------------------main-----------------is-going--------------")
     
