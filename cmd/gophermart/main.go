@@ -79,6 +79,6 @@ func main() {
 			
 		}
 	}(&allOrdersMap)
-    err = http.ListenAndServe(address, r)
+    err = http.ListenAndServe(accrualSysemAddress, r)
     logg.Fatal().Err(err).Send()
 }
