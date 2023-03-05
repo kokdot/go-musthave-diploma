@@ -54,6 +54,7 @@ func GetAccrual(orders *repo.AllOrdersMap) error {
 			logg.Print("-----------GetAccrual-------------status-OK-----------------------")
 			
 			bodyBytes, err := io.ReadAll(response.Body)
+			response.Body.Close()
 			if err != nil {
 				logg.Error().Err(err).Send()
 				logg.Print("-----------GetAccrual-------------return-----------------------")
