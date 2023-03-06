@@ -196,6 +196,7 @@ func (d DBStorage) GetAccrualForUser(userID int) float64 {
     return float64(sum) / 100
 }
 func (d DBStorage) GetBalance(userID int) *repo.Balance {
+	logg.Print("---------------GetBalance-----------start-----------------------")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	
@@ -206,10 +207,12 @@ func (d DBStorage) GetBalance(userID int) *repo.Balance {
 	var withdrawn int
 	_ = row.Scan(&withdrawn)
 	current := d.GetAccrualForUser(userID)
-   var balance = repo.Balance{
+	var balance = repo.Balance{
 		Current: float64(current),
 		Withdrawn: float64(withdrawn) / 100,
-   }
+	}
+	logg.Printf("get balance: %#v", balance)
+	logg.Print("---------------GetBalance-----------finish-----------------------")
     return &balance
 }
 func (d DBStorage) GetListOrders(userID int) *repo.Orders {
