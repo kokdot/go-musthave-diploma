@@ -3,29 +3,25 @@ package handler
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
-
-	"context"
-	"net/http"
 	"strconv"
 
-	"github.com/go-chi/chi/v5"
+	// "fmt"
+	"io"
+
+	// "time"
+	"net/http"
+	// "strconv"
+
+	// "github.com/go-chi/chi/v5"
+	"github.com/kokdot/go-musthave-diploma/internal/luna"
 	"github.com/kokdot/go-musthave-diploma/internal/repo"
-	"github.com/kokdot/go-musthave-diploma/internal/store"
+
+	// "github.com/kokdot/go-musthave-diploma/internal/store"
 	"github.com/kokdot/go-musthave-diploma/internal/auth"
 	"github.com/kokdot/go-musthave-diploma/internal/toking"
 	"github.com/rs/zerolog"
 )
  
-type keyData int
-
-const (
-	nameDataKey keyData = iota
-	valueDataKey
-)
-var UserIsPresent = errors.New("user is present")
-var PasswordIsEmpty = errors.New("password is empty")
 
 var m  repo.Repo
 var logg zerolog.Logger
@@ -36,11 +32,325 @@ func PutM(M repo.Repo) {
 func GetLogg(loggReal zerolog.Logger)  {
 	logg = loggReal
 }
+func CheckCookieAutentication(r *http.Request) (string, bool, error) {
+	name, ok, err := auth.ValidCookie(r, m.GetSeckretKey())
+	return name, ok, err
+}
 
+func GetBalanceWithdrawals(w http.ResponseWriter, r *http.Request) {
+	logg.Print("-----------------------------GetBalanceWithdrawals-------start-------------------------------------------")
+	name, ok, err := CheckCookieAutentication(r)
+	if !ok {
+		logg.Error().Err(err).Send()
+		w.Header().Set("content-type", "application/json")
+		http.Error(w, "логин или пароль не совпадают. login failed", http.StatusUnauthorized)
+	}
+	logg.Print("Получен запрос для пользователя: ", name, "Проверка cookie прошла успешно.")
+	userID, ok := m.UserIsPresentReturnUserID(name)
+	if !ok {
+		logg.Error().Err(err).Send()	
+		w.Header().Set("content-type", "application/json")
+		http.Error(w, "такого пользователя. не существует вам необходимо пройти регистрацию или аутентификацию. login failed", http.StatusUnauthorized)
+	}
+	logg.Print("Данный пользователь присутствует в системе.")
+	withdraws, err := m.GetBalanceWithdrawals(userID)
+	if err != nil {
+		logg.Error().Err(err).Send()	
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	logg.Printf("Полученный список выведенных средств: %#v", withdraws)
+	if len(*withdraws) == 0 {
+		logg.Error().Err(repo.ErrNoDataForAnswer).Send()	
+		w.Header().Set("content-type", "application/json")
+		http.Error(w, "нет ни одного списания", http.StatusNoContent )
+	}
+	bodyBytes, err := json.Marshal(&withdraws)
+	if err != nil {
+		logg.Error().Err(err).Send()	
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("content-type", "application/json")
+	w.Write(bodyBytes)
+	w.WriteHeader(http.StatusOK)
+	
+}
+func PutWithdraw(w http.ResponseWriter, r *http.Request) {
+	logg.Print("-----------------------------PutWithdraw-------start-------------------------------------------")
+	name, ok, err := CheckCookieAutentication(r)
+	if !ok {
+		logg.Error().Err(err).Send()
+		w.Header().Set("content-type", "application/json")
+		http.Error(w, "логин или пароль не совпадают. login failed", http.StatusUnauthorized)
+	}
+	logg.Print("Получен запрос для пользователя: ", name, "Проверка cookie прошла успешно.")
+	userID, ok := m.UserIsPresentReturnUserID(name)
+	if !ok {
+		logg.Error().Err(err).Send()	
+		w.Header().Set("content-type", "application/json")
+		http.Error(w, "такого пользователя. не существует вам необходимо пройти регистрацию или аутентификацию. login failed", http.StatusUnauthorized)
+	}
+	logg.Print("Данный пользователь присутствует в системе.")
+	withdraw := repo.Withdraw{}
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		logg.Error().Err(err).Send()	
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err = json.Unmarshal(bodyBytes, &withdraw)
+	if err != nil {
+		logg.Error().Err(err).Send()	
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	logg.Printf("Getting of requets is: %#v\n", withdraw)
+	number, err := strconv.Atoi(withdraw.Order)
+	logg.Print("Получен заказ номер: ", number)
+	if err != nil {
+		logg.Error().Err(repo.ErrInvalidFormatNumberOfOrder).Send()	
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+	if !luna.Valid(number) {
+		logg.Error().Err(repo.ErrInvalidFormatNumberOfOrder).Send()	
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+	logg.Print("Проверка luna прошла успешно.")
+	ok, err = m.PutWithdraw(userID, withdraw)//-----------------------------------
+	
+	if  !ok {
+		if err != nil {
+			switch {
+			case errors.Is(err, repo.ErrNoMoney):
+				logg.Error().Err(err).Send()
+				w.Header().Set("content-type", "application/json")	
+				http.Error(w, "на счету недостаточно средств", http.StatusPaymentRequired)
+			default:
+				logg.Error().Err(err).Send()
+				w.Header().Set("content-type", "application/json")	
+				http.Error(w, "ошибка сервера", http.StatusInternalServerError)
+			}
+		} else {
+			logg.Error().Err(err).Send()
+			w.Header().Set("content-type", "application/json")	
+			http.Error(w, "ошибка сервера", http.StatusInternalServerError)
+		}
+
+	}
+	logg.Print("-----------------------------PutWithdraw-------finish-------------------------------------------")
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(http.StatusOK)
+}
+func Balance(w http.ResponseWriter, r *http.Request) {
+	logg.Print("-----------------------------Balance-------start-------------------------------------------")
+	name, ok, err := CheckCookieAutentication(r)
+	if !ok {
+		logg.Error().Err(err).Send()
+		w.Header().Set("content-type", "application/json")
+		http.Error(w, "логин или пароль не совпадают. login failed", http.StatusUnauthorized)
+	}
+	logg.Print("Получен запрос для пользователя: ", name, "Проверка cookie прошла успешно.")
+	userID, ok := m.UserIsPresentReturnUserID(name)
+	if !ok {
+		logg.Error().Err(err).Send()	
+		w.Header().Set("content-type", "application/json")
+		http.Error(w, "такого пользователя. не существует вам необходимо пройти регистрацию или аутентификацию. login failed", http.StatusUnauthorized)
+	}
+	logg.Print("Данный пользователь присутствует в системе.")
+	balance := m.GetBalance(userID)
+	bodyBytes, err := json.Marshal(&balance)
+	if err != nil {
+		logg.Error().Err(err).Send()	
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("content-type", "application/json")
+	w.Write(bodyBytes)
+	w.WriteHeader(http.StatusOK)
+}
+func UploadOrders(w http.ResponseWriter, r *http.Request) {
+	logg.Print("-----------------------------UploadOrders-------start-------------------------------------------")
+	name, ok, err := CheckCookieAutentication(r)
+	if !ok {
+		logg.Error().Err(err).Send()
+		w.Header().Set("content-type", "application/json")
+		http.Error(w, "логин или пароль не совпадают. login failed", http.StatusUnauthorized)
+	}
+	logg.Print("Получен запрос для пользователя: ", name, ";   Проверка cookie прошла успешно.")
+	userID, ok := m.UserIsPresentReturnUserID(name)
+	if !ok {
+		logg.Error().Err(err).Send()	
+		w.Header().Set("content-type", "application/json")
+		http.Error(w, "такого пользователя. не существует вам необходимо пройти регистрацию или аутентификацию. login failed", http.StatusUnauthorized)
+	}
+	logg.Print("Данный пользователь присутствует в системе.")
+	orders := m.GetListOrders(userID)
+	logg.Printf("Полученный список заказов: %#v", orders)
+	if len(*orders) == 0 {
+		logg.Error().Err(repo.ErrNoDataForAnswer).Send()	
+		w.Header().Set("content-type", "application/json")
+		http.Error(w, "нет данных для ответа", http.StatusNoContent )
+	}
+ 	bodyBytes, err := json.Marshal(&orders)
+	if err != nil {
+		logg.Error().Err(err).Send()	
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("content-type", "application/json")
+	w.Write(bodyBytes)
+	w.WriteHeader(http.StatusOK)
+}
+
+func DownloadOrderNumber(w http.ResponseWriter, r *http.Request) {
+	logg.Print("-----------------------------DownloadOrderNumber-------start-------------------------------------------")
+	name, ok, err := CheckCookieAutentication(r)
+	if !ok {
+		logg.Error().Err(err).Send()
+		w.Header().Set("content-type", "application/json")
+		http.Error(w, "логин или пароль не совпадают. login failed", http.StatusUnauthorized)
+	}
+	logg.Print("Получен запрос для пользователя: ", name, "Проверка cookie прошла успешно.")
+	ok = m.UserIsPresent(name)
+	if !ok {
+		logg.Error().Err(err).Send()	
+		w.Header().Set("content-type", "application/json")
+		http.Error(w, "такого пользователя. не существует вам необходимо пройти регистрацию или аутентификацию. login failed", http.StatusUnauthorized)
+	}
+	logg.Print("Данный пользователь присутствует в системе.")
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		logg.Error().Err(err).Send()	
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	
+	number, err := strconv.Atoi(string(bodyBytes))
+	if err != nil {
+		logg.Error().Err(err).Send()	
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	logg.Print("Получен заказ номер: ", number)
+	if !luna.Valid(number) {
+		logg.Error().Err(repo.ErrInvalidFormatNumberOfOrder).Send()	
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+	logg.Print("Проверка luna прошла успешно.")
+	ok = m.CheckExistOrderNumber(number)
+	logg.Print("Провека сущеустаования данного номера заказа: ", ok)
+	var userID int
+	if ok {
+		logg.Print("Данный заказ уже сущетвует.")
+		userID = m.GetIDOrderOwner(number)
+		
+		logg.Print("Id ползователя, чей это заказ: ", userID)
+		userName := m.GetUserNameByID(userID)
+		if userName == name {
+			logg.Print("заказ принадлежит пользователю с Id: ", userID)
+			logg.Error().Err(repo.ErrOrderUsedUser).Send()	
+			w.Header().Set("content-type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			return
+		} else {
+			logg.Print("заказ не принадлежит пользователю с Id: ", userID)
+			logg.Error().Err(repo.ErrOrderUsedUnotherUser).Send()	
+			w.Header().Set("content-type", "application/json")
+			w.WriteHeader(http.StatusConflict)
+			return
+		}
+	} else {
+		userID = m.GetUserIDByName(name)
+	}
+	logg.Print("создаем заказ для пользователя с Id: ", userID, "; и номером заказа :  ", number)
+	_, err = m.ObtainNewOrder(userID, number)
+	if err != nil {
+		logg.Error().Err(err).Send()	
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	logg.Print("новый номер заказа принят в обработку")	
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
+	// return
+}
+
+func GetOk(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Ok"))
+}
+func CheckUserLogin(w http.ResponseWriter, r *http.Request) {
+	logg.Print("m: ", m)
+	_, ok, err := CheckCookieAutentication(r)
+	if !ok {
+		logg.Error().Err(err).Send()
+		http.Error(w, "логин или пароль не совпадают. login failed", http.StatusUnauthorized)
+	}
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(http.StatusOK)
+}
+func Authentication(w http.ResponseWriter, r *http.Request) {
+	logg.Print("--------------------Registration------------1-------------start-------------------------------")
+	u := repo.User{}
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		logg.Error().Err(err).Send()	
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err = json.Unmarshal(bodyBytes, &u)
+	if err != nil {
+		logg.Error().Err(err).Send()	
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	logg.Printf("Getting of requets is: %#v\n", u)
+	logg.Print("m: ", m)
+	ok, err := m.UserAuthenticate(u)
+	if !ok {
+		if err != nil {
+			switch {
+			case errors.Is(err, repo.ErrPasswordAndLoginMismatch):
+				logg.Error().Err(err).Send()	
+				http.Error(w, "неверная пара логин/пароль", http.StatusUnauthorized)
+			case errors.Is(err, repo.ErrPasswordIsEmpty):
+				logg.Error().Err(err).Send()	
+				http.Error(w, "пароль не может быть пустым", http.StatusBadRequest)
+			default:
+				logg.Error().Err(err).Send()	
+				http.Error(w, "ошибка сервера", http.StatusInternalServerError)
+			}
+		}
+	} 
+	cookie := auth.SetCookie(toking.Toking(), u.Name, m.GetSeckretKey())
+	logg.Print("cookie: ", cookie)
+	http.SetCookie(w, cookie)
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(http.StatusOK)
+}
 
 func Registration(w http.ResponseWriter, r *http.Request) {
 	logg.Print("--------------------Registration------------1-------------start-------------------------------")
-	u := repo.User
+	u := repo.User{}
 	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.Header().Set("content-type", "application/json")
@@ -55,335 +365,38 @@ func Registration(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	logg.Printf("Getting of requets is: %#v\n", u)
-
+	logg.Print("m: ", m)
 	err = m.UserRegistrate(u)
 
 	if err != nil {
 		switch {
-		case errors.Is(err, UserIsPresent):
+		case errors.Is(err, repo.ErrUserIsPresent):
 			http.Error(w, "логин уже занят", http.StatusConflict)//PasswordIsEmpty
-		case errors.Is(err, PasswordIsEmpty):
+		case errors.Is(err, repo.ErrPasswordIsEmpty):
 			http.Error(w, "пароль не может быть пустым", http.StatusBadRequest)//StatusBadRequest
 		default:
 			http.Error(w, "ошибка сервера", http.StatusInternalServerError)//StatusBadRequest 
 		}
 	}
-	w.Header().Set("content-type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	http.SetCookie(w, auth.SetCookie(toking.Toking(), m.GetSeckretKey()))
-}
-func PostUpdateByBatch1(w http.ResponseWriter, r *http.Request) {
-	logg.Print("--------------------PostUpdateByBatch------------1-------------start-------------------------------")
-
-	bodyBytes, err := io.ReadAll(r.Body)
-	if err != nil {
-	logg.Print("--------------------PostUpdateByBatch------------2-------------start-------------------------------")
-		w.Header().Set("content-type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	smNew := make(repo.StoreMap)
-	err = json.Unmarshal(bodyBytes, &smNew)
-	if err != nil {
-	logg.Print("--------------------PostUpdateByBatch--------------3-----------start-------------------------------")
-	logg.Print(err)	
-	w.Header().Set("content-type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	logg.Printf("Getting of requets is: %#v\n", smNew)
-
-	smOld, err := m.SaveByBatch1(&smNew)
 	
-	logg.Printf("Answer to requets is: %#v\n", smOld)
-	if err != nil {
-	logg.Print("--------------------PostUpdateByBatch-------------4------------start-------------------------------")
-		w.Header().Set("content-type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	logg.Print("--------------------PostUpdateByBatch-------------5------------start-------------------------------")
-	bodyBytes, err = json.Marshal(smOld)
-	if err != nil {
-		w.Header().Set("content-type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
+	cookie := auth.SetCookie(toking.Toking(), u.Name, m.GetSeckretKey())
+	logg.Print("cookie: ", cookie)
+
+	http.SetCookie(w, cookie)
+	
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(bodyBytes)
 }
-func GetPing(w http.ResponseWriter, r *http.Request) {
-	ok, err := m.GetPing()
- 	if !ok {
-		w.Header().Set("content-type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		logg.Printf("%s", err)
-		return
-	} else {
-		w.Header().Set("content-type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-}
-func PostUpdate(w http.ResponseWriter, r *http.Request) {
-	logg.Print("--------------------PostUpdate-------------------------start-------------------------------")
-
-	bodyBytes, err := io.ReadAll(r.Body)
-	if err != nil {
-		w.Header().Set("content-type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	var mtxNew metricsserver.Metrics
-	err = json.Unmarshal(bodyBytes, &mtxNew)
-	if err != nil {
-		w.Header().Set("content-type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	logg.Printf("----------PostUpdate------mtxNew.----:   %#v", mtxNew)
-	if m.GetKey() != "" {
-		logg.Print("----------------------------if store.Key != ampty string-------------------------------------")
-		if !metricsserver.MtxValid(&mtxNew, m.GetKey()) {
-			logg.Printf("\n-------if !store.MtxValid(&mtxNew).----:   %#v\n", mtxNew)
-			
-			w.Header().Set("content-type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-    }
-	if mtxNew.Delta != nil {
-		logg.Print(" Delta = ", *mtxNew.Delta)
-	}
-	if mtxNew.Value != nil {
-		logg.Print(" Value = ", *mtxNew.Value)
-	}
-	mtxOld, err := m.Save(&mtxNew)//----------------------------------------------------------------------------Save---
-
-	if err != nil {
-		logg.Print("-------after--Save-------err:   ", err)
-		w.Header().Set("content-type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	if mtxOld.Delta != nil {
-		logg.Print(" Delta = ", *mtxOld.Delta)
-	}
-	if mtxNew.Value != nil {
-		logg.Print(" Value = ", *mtxNew.Value)
-	}
-	bodyBytes, err = json.Marshal(mtxOld)
-	if err != nil {
-		w.Header().Set("content-type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	w.Header().Set("content-type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(bodyBytes)
-}
-
-func GetValue(w http.ResponseWriter, r *http.Request) {
-	logg.Print("--------------------GetValue-------------------------start-------------------------------")
-
-	bodyBytes, err := io.ReadAll(r.Body)
-	if err != nil {
-		w.Header().Set("content-type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	var mtxNew store.Metrics
-	err = json.Unmarshal(bodyBytes, &mtxNew)
-	if err != nil {
-		w.Header().Set("content-type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	logg.Printf("\n----------GetValue------mtxNew.----:   %#v\n", mtxNew)
-
-	mtxOLd, err := m.Get(mtxNew.ID) 
-	logg.Printf("\n----------GetValue------mtxOLd.----:   %#v\n", mtxOLd)
-	if err != nil {
-        logg.Print("-----------------------------------err line 274, err:  ", err)
-		w.Header().Set("content-type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	bodyBytes, err = json.Marshal(mtxOLd)
-	if err != nil {
-		w.Header().Set("content-type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	w.Header().Set("content-type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(bodyBytes)
-}
-
-func GetAllJSON(w http.ResponseWriter, r *http.Request) {
-	storeMap, err := m.GetAll()
-	if err != nil {
-		w.Header().Set("content-type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	bodyBytes, err := json.Marshal(storeMap)
-	if err != nil {
-		w.Header().Set("content-type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-	logg.Print(string(bodyBytes))
-	w.Header().Set("content-type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(bodyBytes)
-}
-func GetAll(w http.ResponseWriter, r *http.Request) {
-	str := m.GetAllValues()
-	w.Header().Set("content-type", "text/html")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(str))
-}
-
-func PostCounterCtx(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var nameData string
-		var valueData int
-		nameDataStr := chi.URLParam(r, "nameData")
-		valueDataStr := chi.URLParam(r, "valueData")
-		if nameDataStr == "" || valueDataStr == "" {
-			w.Header().Set("content-type", "text/plain; charset=utf-8")
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		nameData = nameDataStr
-		valueData, err := strconv.Atoi(valueDataStr)
-		if err != nil {
-			w.Header().Set("content-type", "text/plain; charset=utf-8")
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		ctx := context.WithValue(r.Context(), nameDataKey, nameData)
-		ctx = context.WithValue(ctx, valueDataKey, valueData)
-        next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
-func GetCtx(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var nameData string
-		nameDataStr := chi.URLParam(r, "nameData")
-		if nameDataStr == "" {
-			w.Header().Set("content-type", "text/plain; charset=utf-8")
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		nameData = nameDataStr
-		ctx := context.WithValue(r.Context(), nameDataKey, nameData)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
-
-func PostGaugeCtx(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var nameData string
-		var valueData float64
-		nameDataStr := chi.URLParam(r, "nameData")
-		valueDataStr := chi.URLParam(r, "valueData")
-		if nameDataStr == "" || valueDataStr == "" {
-			w.Header().Set("content-type", "text/plain; charset=utf-8")
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		nameData = nameDataStr
-		valueData, err := strconv.ParseFloat(valueDataStr, 64)
-		if err != nil {
-			w.Header().Set("content-type", "text/plain; charset=utf-8")
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		ctx := context.WithValue(r.Context(), nameDataKey, nameData)
-		ctx = context.WithValue(ctx, valueDataKey, valueData)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
-func PostUpdateCounter(w http.ResponseWriter, r *http.Request) {
-	logg.Print("-----------------------------------------------------------------------------PostUpdateCounter-----------------")
-	valueData := r.Context().Value(valueDataKey).(int)
-	nameData := r.Context().Value(nameDataKey).(string)
-	logg.Debug().Str("nameData", nameData).Int("ValueData", valueData).Send()
-	counter, err := m.SaveCounterValue(nameData, store.Counter(valueData))
-    if err != nil {
-		logg.Error().Err(err).Send()
-        w.Header().Set("content-type", "text/plain; charset=utf-8")
-        w.WriteHeader(http.StatusBadRequest)
-        return
-    }
-	logg.Debug().Str("nameData", nameData).Int("ValueData", int(counter)).Send()
-	w.Header().Set("content-type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, counter)
-}
-func PostUpdateGauge(w http.ResponseWriter, r *http.Request) {
-	valueData := r.Context().Value(valueDataKey).(float64)
-	nameData := r.Context().Value(nameDataKey).(string)
-	err := m.SaveGaugeValue(nameData, repo.Gauge(valueData))
-    if err != nil {
-        w.Header().Set("content-type", "text/plain; charset=utf-8")
-        w.WriteHeader(http.StatusBadRequest)
-        return
-    }
-	w.Header().Set("content-type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, valueData)
-}
-func GetCounter(w http.ResponseWriter, r *http.Request) {
-	nameData := r.Context().Value(nameDataKey).(string)
-	n, err := m.GetCounterValue(nameData)
-	if err != nil {
-		w.Header().Set("content-type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusNotFound)
-	} else {
-	    w.Header().Set("content-type", "text/html")
-		w.Header().Set("content-type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "%v", n)
-	}
-}
-func GetGauge(w http.ResponseWriter, r *http.Request) {
-	nameData := r.Context().Value(nameDataKey).(string)
-	n, err := m.GetGaugeValue(nameData)
-	if err != nil {
-		w.Header().Set("content-type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusNotFound)
-	} else {
-	    w.Header().Set("content-type", "text/html")
-		w.Header().Set("content-type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "%v", n)
-	}
-}
-// func Login(w http.ResponseWriter, r *http.Request) {
-//     // проверяем, каким методом получили запрос
-//     switch r.Method {
-//     // если методом POST
-//     case "POST":
-//         login := r.FormValue("login")
-//         password := r.FormValue("password")
-//         // проверяем пароль вспомогательной функцией
-//         if !Auth(login, password) {
-//             w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-//             // если пароль не верен, указываем код ошибки в заголовке
-//             w.WriteHeader(401)
-//             // пишем в тело ответа
-//             fmt.Fprintln(w, "Wrong password")
-//             return
-//         }
-//         // при успешной авторизации обрабатываем запрос
-//         // например, передаём другому обработчику
-//         // AuthorisedHandler(w, r)
-//         // в остальных случаях предлагаем форму авторизации
-//     default:
-//         fmt.Fprint(w, form)
-//     }
+// func GetPing(w http.ResponseWriter, r *http.Request) {
+// 	ok, err := m.GetPing()
+//  	if !ok {
+// 		w.Header().Set("content-type", "application/json")
+// 		w.WriteHeader(http.StatusInternalServerError)
+// 		logg.Printf("%s", err)
+// 		return
+// 	} else {
+// 		w.Header().Set("content-type", "application/json")
+// 		w.WriteHeader(http.StatusOK)
+// 		return
+// 	}
 // }

@@ -1,86 +1,94 @@
 package repo
 
 import (
-	// "time"
-	// "fmt"
-	// "sort"
-) 
+	"errors"
 
-type Repo interface {
+	// "github.com/kokdot/go-musthave-diploma/internal/accrual"
+)
 
-// 	Save(mtx *Metrics) (*Metrics, error)
-// 	Get(id string) (*Metrics, error)
-// 	GetAll() (StoreMap, error)
-// 	SaveCounterValue(name string, counter Counter) (Counter, error)
-// 	SaveGaugeValue(name string, gauge Gauge) error
-// 	GetCounterValue(name string) (Counter, error)
-// 	GetGaugeValue(name string) (Gauge, error)
-// 	GetAllValues() string
-// 	ReadStorage() error
-// 	WriteStorage() error
-// 	GetURL() string
-// 	GetKey() string
-// 	GetStoreFile() string
-// 	GetRestore() bool
-// 	GetStoreInterval() time.Duration 
-// 	GetDataBaseDSN() string
-// 	GetPing() (bool, error)
-// 	SaveByBatch1(*StoreMap) (*StoreMap, error)
-// 	SaveByBatch([]Metrics) (*[]Metrics, error)
+// "time"
+// "fmt"
+// "sort"
+type Status int
+const (
+	NEW	Status	= iota + 1
+	REGISTERED		
+	PROCESSING
+	INVALID
+	PROCESSED
+)
+var ErrUserIsPresent = errors.New("user is present")
+var ErrPasswordIsEmpty = errors.New("password is empty")
+var ErrUserNotPresent error = errors.New("user not present")
+var ErrPasswordAndLoginMismatch = errors.New("password and login mismatch")
+var ErrInternalServerError = errors.New("internal server error")
+var ErrInvalidFormatNumberOfOrder = errors.New("invalid format number of order")//неверный формат номера заказа
+var ErrOrderUsedUser = errors.New("this order being download yet")//номер заказа уже был загружен этим пользователем
+var ErrOrderUsedUnotherUser = errors.New("this order being download yet by unother user")//номер заказа уже был загружен другим пользователем
+var ErrNoDataForAnswer = errors.New("there is no data for answer")//нет данных для ответа
+var ErrNoMoney = errors.New("there is no enuf money for this order")//на счету недостаточно средств
+var Err429 = errors.New("429")//429
+
+
+type Withdraw struct {
+	Order string `json:"order"`
+	Sum float64 `json:"sum"`
+	ProcessedAt string `json:"processed_at"`
 }
-
+type Balance struct {
+	Current float64 `json:"current"`
+	Withdrawn float64 `json:"withdrawn"`
+}
+var StatusSlice = map[Status]string{ 
+	NEW: "NEW",
+	REGISTERED: "REGISTERED",
+	PROCESSING: "PROCESSING",
+	INVALID: "INVALID",
+	PROCESSED: "PROCESSED",
+}
+var StatusSliceFeedBack = map[string]Status{ 
+	"NEW": NEW,
+	"REGISTERED": REGISTERED,
+	"PROCESSING": PROCESSING,
+	"INVALID": INVALID,
+	"PROCESSED": PROCESSED,
+}
 type User struct {
 	Name string `json:"login"`
 	Password string `json:"password"`
 }
+type Order struct {
+	ID int		`json:"-"`
+	Number string `json:"number"`
+	Status string `json:"status"`
+	Accrual float64 `json:"accrual,omitempty"`
+	UploadedAt string `json:"uploaded_at"`
+}
+type Orders []Order
+type Withdraws []Withdraw
+type AllOrdersMap map[string]Order //  string - order
 
-type BD interface {
+type Repo interface {
 	UserRegistrate(u User) error
-	GetSecretKey() string
+	GetSeckretKey() []byte
+	UserIsPresent(name string) bool
+	UserAuthenticate(u User) (bool, error)
+	UserGet(name string) (*User, error)
+	CheckExistOrderNumber(number int) bool
+	GetIDOrderOwner(naumber int) int
+	GetUserNameByID(userID int) string
+	GetUserIDByName(name string) int
+	ObtainNewOrder(userID, number int) (int, error)
+	GetListOrders(userID int) *Orders
+	UserIsPresentReturnUserID(name string) (int, bool)
+	GetBalance(userID int) *Balance
+	GetAccrualForUser(userID int) float64
+	PutWithdraw(userID int, withdraw Withdraw) (bool, error)
+	GetBalanceWithdrawals(userID int) (*Withdraws, error)
+	UpdateAccrual(allOrdersMap *AllOrdersMap)
+	GetNotDoneOrders(allOrdersMap *AllOrdersMap) error
+	// GetOk()
 
 }
 
-// type Consumer interface {
-//     ReadStorage() (*StoreMap, error) // для чтения события
-//     Close() error               // для закрытия ресурса (файла)
-// }
-// type Producer interface {
-//     WriteStorage() error // для записи события
-//     Close() error            // для закрытия ресурса (файла)
-// }
-// type Metrics struct {
-// 	ID    string   `json:"id"`              // имя метрики
-// 	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
-// 	Delta *Counter `json:"delta,omitempty"` // значение метрики в случае передачи counter
-// 	Value *Gauge   `json:"value,omitempty"` // значение метрики в случае передачи gauge
-// 	Hash  string   `json:"hash,omitempty"`  // значение хеш-функции
-// 	// Hash  []byte   `json:"hash,omitempty"`  // значение хеш-функции
-// }
-// type Counter int64
-// type Gauge float64
-// type StoreMap map[string]Metrics
-// func StoreMapToString(smPtr *StoreMap) string {
-// 	if smPtr == nil {
-// 		return ""
-// 	}
-// 	var str string
-// 	var v Gauge
-// 	var d Counter
-// 	var i int
-// 	keys := make([]string, 0, len(*smPtr))
-// 	for k := range *smPtr {
-// 		keys = append(keys, k)
-// 	}
-// 	sort.Strings(keys)
-// 	for _, key := range keys {
-// 		i++
-// 		if (*smPtr)[key].Delta != nil {
-// 			d = *(*smPtr)[key].Delta
-// 		}
-// 		if (*smPtr)[key].Value != nil {
-// 			v = *(*smPtr)[key].Value
-// 		}
-// 		str += fmt.Sprintf("%d; %s: %v %v\n",i , key, v, d)
-// 	}
-// 	return str
-// }
+
