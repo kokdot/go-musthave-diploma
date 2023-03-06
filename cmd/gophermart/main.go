@@ -50,9 +50,10 @@ func main() {
     r.Post("/api/user/test", handler.CheckUserLogin)
     r.Post("/api/user/login", handler.Authentication)
     r.Post("/api/user/orders", handler.DownloadOrderNumber)
+    r.Post("/api/user/balance/withdraw", handler.PutWithdraw)
     r.Get("/api/user/orders", handler.UploadOrders)
     r.Get("/api/user/balance", handler.Balance)
-    r.Get("/api/user/withdraw", handler.Withdraw)
+    // r.Get("/api/user/withdraw", handler.Withdraw)
     r.Get("/api/user/balance/withdrawals", handler.GetBalanceWithdrawals)
     var allOrdersMap = make(repo.AllOrdersMap, 0)
     go func(allOrdersMap *repo.AllOrdersMap) {

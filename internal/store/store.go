@@ -104,6 +104,7 @@ func (d DBStorage) GetNotDoneOrders(allOrdersMap *repo.AllOrdersMap) error {
     return nil
 }
 func (d DBStorage) GetBalanceWithdrawals(userID int) (*repo.Withdraws, error) {
+	logg.Print("-------------------------GetBalanceWithdrawals----------start------------")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
     query := `
@@ -141,15 +142,23 @@ func (d DBStorage) GetBalanceWithdrawals(userID int) (*repo.Withdraws, error) {
     if err != nil {
         return nil, err
     }
+	logg.Printf("get withdraw: %#v", withdraws)
+	logg.Print("-------------------------GetBalanceWithdrawals----------finish------------")
     return &withdraws, nil
 }
 
 func (d DBStorage) PutWithdraw(userID int, withdraw repo.Withdraw) (bool, error) {
+	logg.Print("-------------------------PutWithdraw----------start------------")
 	accrual := d.GetAccrualForUser(userID)
 	if withdraw.Sum > accrual {
 		return false, repo.ErrNoMoney
 	}
-	orderID, err := d.ObtainNewOrder(userID, int(withdraw.Sum * 100))
+	number, err := strconv.Atoi(withdraw.Order)
+	if err != nil {
+		logg.Error().Err(err).Send()
+		return false, err
+	}
+	orderID, err := d.ObtainNewOrder(userID, number)
 	if err != nil {
 		logg.Printf("не удалось загрузить новый заказ: %v", err)
 		return false, err
@@ -170,7 +179,7 @@ func (d DBStorage) PutWithdraw(userID int, withdraw repo.Withdraw) (bool, error)
 		logg.Printf("не удалось выполнить запрос на списание: %v", err)
 		return false, err
 	}
-	
+	logg.Print("-------------------------PutWithdraw----------finish------------")
 	return true, nil
 }
 func (d DBStorage) GetAccrualForUser(userID int) float64 {

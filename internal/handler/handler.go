@@ -78,8 +78,8 @@ func GetBalanceWithdrawals(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	
 }
-func Withdraw(w http.ResponseWriter, r *http.Request) {
-	logg.Print("-----------------------------Withdraw-------start-------------------------------------------")
+func PutWithdraw(w http.ResponseWriter, r *http.Request) {
+	logg.Print("-----------------------------PutWithdraw-------start-------------------------------------------")
 	name, ok, err := CheckCookieAutentication(r)
 	if !ok {
 		logg.Error().Err(err).Send()
@@ -125,7 +125,7 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	logg.Print("Проверка luna прошла успешно.")
-	ok, err = m.PutWithdraw(userID, withdraw)
+	ok, err = m.PutWithdraw(userID, withdraw)//-----------------------------------
 	
 	if  !ok {
 		if err != nil {
@@ -146,6 +146,7 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 		}
 
 	}
+	logg.Print("-----------------------------PutWithdraw-------finish-------------------------------------------")
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(http.StatusOK)
 }
