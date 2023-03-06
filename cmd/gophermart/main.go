@@ -54,7 +54,7 @@ func main() {
     r.Get("/api/user/orders", handler.UploadOrders)
     r.Get("/api/user/balance", handler.Balance)
     // r.Get("/api/user/withdraw", handler.Withdraw)
-    r.Get("/api/user/balance/withdrawals", handler.GetBalanceWithdrawals)
+    r.Get("/api/user/withdrawals", handler.GetBalanceWithdrawals)
     var allOrdersMap = make(repo.AllOrdersMap, 0)
     go func(allOrdersMap *repo.AllOrdersMap) {
 		for {
