@@ -68,6 +68,7 @@ func GetAccrual(orders *repo.AllOrdersMap) error {
 			}
 			order.Accrual = order1.Accrual
 			order.Status = order1.Status
+			(*orders)[number] = order
 			logg.Printf("order: %#v", order)
 			logg.Printf("order1: %#v", order1)
 			logg.Printf("orders: %#v", orders)
