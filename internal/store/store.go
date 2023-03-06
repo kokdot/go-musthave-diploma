@@ -34,6 +34,8 @@ func (d DBStorage) GetSeckretKey() []byte {
 	return d.secretKey
 }
 func (d DBStorage) UpdateAccrual(allOrdersMap *repo.AllOrdersMap) {
+	logg.Print("-------------------------UpdateAccrual------start----------------------------------")
+	logg.Printf("get allOrdersMap: %#v", *allOrdersMap)
 	for numberStr, order := range *allOrdersMap {
 		number, err := strconv.Atoi(numberStr)
 		if err != nil {
@@ -42,15 +44,17 @@ func (d DBStorage) UpdateAccrual(allOrdersMap *repo.AllOrdersMap) {
 		if number == 0 {
 			continue
 		}
+		status := int(repo.StatusSliceFeedBack[order.Status])
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel() 
 		query := `UPDATE Orders
 			SET
-			Accrual = $1
-			WHERE Id = $2
+			Accrual = $1,
+			Status = $2
+			WHERE Id = $3
 		`
 		accrual := int(order.Accrual * 100)
-		_, err = d.dbconn.ExecContext(ctx, query, accrual, order.ID)
+		_, err = d.dbconn.ExecContext(ctx, query, accrual, status, order.ID)
 		if err != nil {
 			logg.Error().Err(err).Send()
 		}
@@ -501,4 +505,5 @@ func (d DBStorage) GetPing() (bool, error) {
 	}
 	logg.Print("Ping Ok")
 	return true, nil
+
 }

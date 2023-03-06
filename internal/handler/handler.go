@@ -185,7 +185,7 @@ func UploadOrders(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
 		http.Error(w, "логин или пароль не совпадают. login failed", http.StatusUnauthorized)
 	}
-	logg.Print("Получен запрос для пользователя: ", name, "Проверка cookie прошла успешно.")
+	logg.Print("Получен запрос для пользователя: ", name, ";   Проверка cookie прошла успешно.")
 	userID, ok := m.UserIsPresentReturnUserID(name)
 	if !ok {
 		logg.Error().Err(err).Send()	
