@@ -109,8 +109,8 @@ func (d DBStorage) GetBalanceWithdrawals(userID int) (*repo.Withdraws, error) {
 	defer cancel()
     query := `
 	select 
-	number,
-	(select Number from Orders where OrderId = OrderId as number), 
+	
+	(select Number from Orders where Id = OrderId), 
 	Withdrawn, 
 	PrcessedAt
 	from Withdrawns where UserId=$1;
