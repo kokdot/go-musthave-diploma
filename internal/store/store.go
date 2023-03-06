@@ -165,11 +165,11 @@ func (d DBStorage) PutWithdraw(userID int, withdraw repo.Withdraw) (bool, error)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel() 
-	query := `INSERT INTO Withdraws
+	query := `INSERT INTO Withdrawns
     (
         UserId, 
         OrderId, 
-        Withdraw, 
+        Withdrawn, 
 		ProcessedAt
     ) values($1, $2, $3, $4);
     `
