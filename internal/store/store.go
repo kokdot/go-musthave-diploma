@@ -112,7 +112,7 @@ func (d DBStorage) GetBalanceWithdrawals(userID int) (*repo.Withdraws, error) {
 	
 	(select Number from Orders where Id = OrderId), 
 	Withdrawn, 
-	PrcessedAt
+	ProcessedAt
 	from Withdrawns where UserId=$1;
 	`
     rows, err := d.dbconn.QueryContext(ctx, query, userID)
