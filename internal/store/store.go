@@ -173,7 +173,9 @@ func (d DBStorage) PutWithdraw(userID int, withdraw repo.Withdraw) (bool, error)
 		ProcessedAt
     ) values($1, $2, $3, $4);
     `
-    withdrawn := int(withdraw.Sum * 100)
+    logg.Printf("withdraw.sum: %#v", withdraw.Sum)
+	withdrawn := int(withdraw.Sum * 100)
+    logg.Printf("withdrawn: %#v", withdrawn)
 	_, err = d.dbconn.ExecContext(ctx, query, userID, orderID, withdrawn, time.Now())
     if err != nil {
 		logg.Printf("не удалось выполнить запрос на списание: %v", err)
