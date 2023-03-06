@@ -210,9 +210,12 @@ func (d DBStorage) GetBalance(userID int) *repo.Balance {
 	_ = row.Scan(&withdrawn)
 	logg.Printf("get sum withdrawns: %#v", withdrawn)
 	current := d.GetAccrualForUser(userID)
+	current1 := float64(current)
+	withdrawn1 := float64(withdrawn) / 100
+	current1 -= withdrawn1
 	var balance = repo.Balance{
-		Current: float64(current),
-		Withdrawn: float64(withdrawn) / 100,
+		Current: current1,
+		Withdrawn: withdrawn1,
 	}
 	logg.Printf("get balance: %#v", balance)
 	logg.Print("---------------GetBalance-----------finish-----------------------")
