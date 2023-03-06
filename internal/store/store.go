@@ -206,6 +206,7 @@ func (d DBStorage) GetBalance(userID int) *repo.Balance {
     row := d.dbconn.QueryRowContext(ctx, query, userID)
 	var withdrawn int
 	_ = row.Scan(&withdrawn)
+	logg.Printf("get sum withdrawns: %#v", withdrawn)
 	current := d.GetAccrualForUser(userID)
 	var balance = repo.Balance{
 		Current: float64(current),
